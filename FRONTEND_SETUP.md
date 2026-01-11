@@ -43,12 +43,8 @@ Antes de comenzar, necesitas tener instalado:
 
 3. **Verificar Instalación**
    ```cmd
-   # Abrir PowerShell o CMD como Administrador
    node --version
-   # Debería mostrar: v18.x.x o superior
-
    npm --version
-   # Debería mostrar: 9.x.x o superior
    ```
 
 ### PASO 2: Obtener el Proyecto
@@ -68,35 +64,41 @@ cd nombre-del-proyecto
 ### PASO 3: Instalar Dependencias
 
 ```cmd
-# En la carpeta raíz del proyecto
 npm install
 ```
 
 Este proceso puede tomar 2-5 minutos dependiendo de tu conexión a internet.
 
-**Salida esperada:**
-```
-added 277 packages, and audited 278 packages in 2m
+### PASO 4: Configurar el Frontend
 
-65 packages are looking for funding
-  run `npm fund` for details
-
-found 0 vulnerabilities
-```
-
-### PASO 4: Configurar Variables de Entorno
+El frontend usa un archivo `config.json` en la carpeta `public/` para su configuración.
 
 1. **Copiar el archivo de ejemplo**
    ```cmd
-   copy .env.example .env
+   copy public\config.example.json public\config.json
    ```
 
-2. **Editar el archivo .env**
-   - Abrir con Notepad++, VS Code, o Notepad
-   - Verificar que tenga:
-   ```env
-   VITE_API_URL=http://localhost:8000
-   VITE_DEV_PORT=5173
+2. **Editar el archivo (si es necesario)**
+   ```cmd
+   notepad public\config.json
+   ```
+
+   El archivo debe contener:
+   ```json
+   {
+     "api": {
+       "baseUrl": "http://localhost:8000",
+       "timeout": 30000
+     },
+     "app": {
+       "name": "Data Anonymization System",
+       "version": "1.0.0"
+     },
+     "upload": {
+       "maxFileSizeMB": 50,
+       "acceptedFormats": [".csv", ".xlsx", ".xls"]
+     }
+   }
    ```
 
 ### PASO 5: Ejecutar el Frontend
@@ -111,7 +113,6 @@ VITE v5.4.8  ready in 234 ms
 
 ➜  Local:   http://localhost:5173/
 ➜  Network: use --host to expose
-➜  press h + enter to show help
 ```
 
 ### PASO 6: Abrir en el Navegador
@@ -129,38 +130,25 @@ VITE v5.4.8  ready in 234 ms
 **Método A: Usando NodeSource (Recomendado)**
 
 ```bash
-# Actualizar el sistema
 sudo apt update
 sudo apt upgrade -y
 
-# Agregar el repositorio de NodeSource para Node.js 20.x
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-
-# Instalar Node.js y npm
 sudo apt install -y nodejs
 
-# Verificar instalación
 node --version
-# Debería mostrar: v20.x.x
-
 npm --version
-# Debería mostrar: 10.x.x
 ```
 
 **Método B: Usando nvm (Recomendado para desarrollo)**
 
 ```bash
-# Instalar nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-
-# Recargar la configuración del shell
 source ~/.bashrc
 
-# Instalar Node.js LTS
 nvm install --lts
 nvm use --lts
 
-# Verificar
 node --version
 npm --version
 ```
@@ -177,48 +165,46 @@ cd nombre-del-proyecto
 **Opción B: Descargar y extraer**
 ```bash
 cd ~
-# Si tienes el archivo .tar.gz o .zip
 unzip proyecto.zip
-# o
-tar -xzf proyecto.tar.gz
-
 cd nombre-del-proyecto
 ```
 
 ### PASO 3: Instalar Dependencias
 
 ```bash
-# En la carpeta raíz del proyecto
 npm install
 ```
 
-Este proceso puede tomar 2-5 minutos.
-
 **Si hay errores de permisos:**
 ```bash
-# Cambiar permisos de la carpeta npm global
 sudo chown -R $USER:$USER ~/.npm
 sudo chown -R $USER:$USER ~/nombre-del-proyecto
 ```
 
-### PASO 4: Configurar Variables de Entorno
+### PASO 4: Configurar el Frontend
 
 ```bash
-# Copiar el archivo de ejemplo
-cp .env.example .env
+cp public/config.example.json public/config.json
 
-# Editar con tu editor favorito
-nano .env
-# o
-vim .env
-# o
-code .env  # Si tienes VS Code instalado
+nano public/config.json
 ```
 
 Verificar que contenga:
-```env
-VITE_API_URL=http://localhost:8000
-VITE_DEV_PORT=5173
+```json
+{
+  "api": {
+    "baseUrl": "http://localhost:8000",
+    "timeout": 30000
+  },
+  "app": {
+    "name": "Data Anonymization System",
+    "version": "1.0.0"
+  },
+  "upload": {
+    "maxFileSizeMB": 50,
+    "acceptedFormats": [".csv", ".xlsx", ".xls"]
+  }
+}
 ```
 
 Guardar y cerrar (en nano: Ctrl+X, Y, Enter)
@@ -227,15 +213,6 @@ Guardar y cerrar (en nano: Ctrl+X, Y, Enter)
 
 ```bash
 npm run dev
-```
-
-**Salida esperada:**
-```
-VITE v5.4.8  ready in 234 ms
-
-➜  Local:   http://localhost:5173/
-➜  Network: http://192.168.1.100:5173/
-➜  press h + enter to show help
 ```
 
 ### PASO 6: Abrir en el Navegador
@@ -248,31 +225,82 @@ VITE v5.4.8  ready in 234 ms
 
 ## ⚙️ Configuración del Frontend
 
-### Variables de Entorno
+### Sistema de Configuración JSON
 
-El frontend usa variables de entorno con el prefijo `VITE_`:
+El frontend utiliza un archivo `config.json` ubicado en la carpeta `public/`. Este archivo se carga dinámicamente cuando la aplicación inicia.
 
-| Variable | Descripción | Valor por Defecto |
-|----------|-------------|-------------------|
-| `VITE_API_URL` | URL del backend API | `http://localhost:8000` |
-| `VITE_DEV_PORT` | Puerto del servidor de desarrollo | `5173` |
-| `VITE_PREVIEW_PORT` | Puerto para preview del build | `4173` |
+#### Estructura del config.json
 
-**Ejemplo de .env para desarrollo:**
-```env
-VITE_API_URL=http://localhost:8000
-VITE_DEV_PORT=5173
-VITE_PREVIEW_PORT=4173
+```json
+{
+  "api": {
+    "baseUrl": "http://localhost:8000",
+    "timeout": 30000
+  },
+  "app": {
+    "name": "Data Anonymization System",
+    "version": "1.0.0"
+  },
+  "upload": {
+    "maxFileSizeMB": 50,
+    "acceptedFormats": [".csv", ".xlsx", ".xls"]
+  }
+}
 ```
 
-**Ejemplo de .env para producción:**
-```env
-VITE_API_URL=https://api.tu-dominio.com
+#### Opciones de Configuración
+
+| Sección | Propiedad | Descripción | Valor por Defecto |
+|---------|-----------|-------------|-------------------|
+| **api** | `baseUrl` | URL del backend API | `http://localhost:8000` |
+| **api** | `timeout` | Timeout de las peticiones en ms | `30000` |
+| **app** | `name` | Nombre de la aplicación | `Data Anonymization System` |
+| **app** | `version` | Versión de la aplicación | `1.0.0` |
+| **upload** | `maxFileSizeMB` | Tamaño máximo de archivo | `50` |
+| **upload** | `acceptedFormats` | Formatos aceptados | `[".csv", ".xlsx", ".xls"]` |
+
+#### Configuración para Diferentes Entornos
+
+**Desarrollo Local:**
+```json
+{
+  "api": {
+    "baseUrl": "http://localhost:8000",
+    "timeout": 30000
+  }
+}
 ```
+
+**Red Local:**
+```json
+{
+  "api": {
+    "baseUrl": "http://192.168.1.100:8000",
+    "timeout": 30000
+  }
+}
+```
+
+**Producción:**
+```json
+{
+  "api": {
+    "baseUrl": "https://api.tu-dominio.com",
+    "timeout": 30000
+  }
+}
+```
+
+### Cómo Funciona la Configuración
+
+1. Al iniciar la aplicación, `App.tsx` carga el archivo `config.json`
+2. El servicio `src/services/config.ts` gestiona la configuración
+3. Los componentes obtienen la configuración usando `getConfig()` o `getApiUrl()`
+4. Si `config.json` no existe, se usan valores por defecto
 
 ### Configuración de Vite
 
-El archivo `vite.config.ts` controla la configuración de Vite:
+El archivo `vite.config.ts` controla la configuración del servidor de desarrollo:
 
 ```typescript
 export default defineConfig({
@@ -320,13 +348,10 @@ Ahora podrás acceder desde:
 Windows:
 ```cmd
 ipconfig
-# Busca "IPv4 Address"
 ```
 
 Ubuntu/Linux:
 ```bash
-ip addr show
-# o
 hostname -I
 ```
 
@@ -340,23 +365,12 @@ hostname -I
 npm run build
 ```
 
-**Salida esperada:**
-```
-vite v5.4.8 building for production...
-✓ 1476 modules transformed.
-rendering chunks...
-computing gzip size...
-dist/index.html                   0.71 kB │ gzip:  0.39 kB
-dist/assets/index-JF1bbubA.css   20.51 kB │ gzip:  4.20 kB
-dist/assets/index-CPMV6xlr.js   235.80 kB │ gzip: 64.29 kB
-✓ built in 5.70s
-```
-
 **Resultado:**
 - Se crea la carpeta `dist/` con los archivos optimizados
 - JavaScript minificado y optimizado
 - CSS minificado
 - Assets optimizados
+- El archivo `config.json` se copia a `dist/`
 
 ### Preview del Build
 
@@ -370,15 +384,27 @@ Accesible en: http://localhost:4173
 
 ### Desplegar el Build
 
-Los archivos en `dist/` están listos para ser desplegados en:
+Los archivos en `dist/` están listos para ser desplegados.
 
-**Opción A: Servidor Web (Nginx, Apache)**
+**IMPORTANTE:** Antes de desplegar, actualiza `dist/config.json` con la configuración de producción:
+
+```json
+{
+  "api": {
+    "baseUrl": "https://api.tu-dominio.com",
+    "timeout": 30000
+  }
+}
+```
+
+**Opciones de Despliegue:**
+
+**Servidor Web (Nginx, Apache)**
 ```bash
-# Copiar contenido de dist/ a tu servidor
 scp -r dist/* usuario@servidor:/var/www/html/
 ```
 
-**Opción B: Servicios de Hosting**
+**Servicios de Hosting:**
 - **Vercel**: `npx vercel`
 - **Netlify**: Arrastra la carpeta `dist/` a netlify.com
 - **GitHub Pages**: Usa GitHub Actions
@@ -424,42 +450,31 @@ sudo chown -R $USER:$USER ./node_modules
 
 **Solución Windows:**
 ```cmd
-# Ver qué proceso usa el puerto
 netstat -ano | findstr :5173
-
-# Matar el proceso (reemplaza PID con el ID del proceso)
 taskkill /PID <PID> /F
 ```
 
 **Solución Ubuntu:**
 ```bash
-# Ver qué proceso usa el puerto
 lsof -i :5173
-
-# Matar el proceso
 kill -9 <PID>
-```
-
-**O cambia el puerto en .env:**
-```env
-VITE_DEV_PORT=5174
 ```
 
 ### Error: "Failed to fetch" en el frontend
 
-**Causa:** El backend no está corriendo o la URL es incorrecta.
+**Causa:** El backend no está corriendo o la URL en `config.json` es incorrecta.
 
 **Solución:**
-1. Verifica que el backend esté corriendo en http://localhost:8000
-2. Verifica que el archivo `.env` tenga la URL correcta:
-   ```env
-   VITE_API_URL=http://localhost:8000
+1. Verifica que el backend esté corriendo
+2. Verifica que `public/config.json` tenga la URL correcta:
+   ```json
+   {
+     "api": {
+       "baseUrl": "http://localhost:8000"
+     }
+   }
    ```
-3. Reinicia el servidor de desarrollo:
-   ```bash
-   # Detener con Ctrl+C
-   npm run dev
-   ```
+3. Reinicia el servidor de desarrollo
 
 ### Error: "Cannot find module" al ejecutar
 
@@ -467,7 +482,6 @@ VITE_DEV_PORT=5174
 
 **Solución:**
 ```bash
-# Eliminar node_modules y reinstalar
 rm -rf node_modules package-lock.json
 npm install
 ```
@@ -479,26 +493,30 @@ del package-lock.json
 npm install
 ```
 
-### Error de compilación en TypeScript
+### Pantalla blanca con "Cargando configuración..."
 
-**Causa:** Errores de tipos en el código.
+**Causa:** El archivo `config.json` no existe o tiene errores de sintaxis JSON.
 
 **Solución:**
 ```bash
-# Ver errores específicos
+cp public/config.example.json public/config.json
+```
+
+Verifica que el JSON sea válido (sin comas extras, comillas correctas).
+
+### Error de compilación en TypeScript
+
+**Solución:**
+```bash
 npm run typecheck
 
-# Si hay muchos errores, reinstala dependencias de tipos
 npm install --save-dev @types/react @types/react-dom
 ```
 
 ### Build falla con "out of memory"
 
-**Causa:** Node.js se queda sin memoria durante el build.
-
 **Solución:**
 ```bash
-# Aumentar límite de memoria de Node.js
 export NODE_OPTIONS=--max_old_space_size=4096
 npm run build
 ```
@@ -511,27 +529,11 @@ npm run build
 
 ### Frontend funciona pero no carga estilos
 
-**Causa:** Tailwind CSS no está compilando correctamente.
-
 **Solución:**
 ```bash
-# Limpiar caché y reinstalar
 rm -rf node_modules .vite dist
 npm install
 npm run dev
-```
-
-### Error: "vite: not found" o "vite: command not found"
-
-**Causa:** Vite no está instalado globalmente y npm no encuentra el binario local.
-
-**Solución:**
-```bash
-# Reinstalar dependencias
-npm install
-
-# O ejecutar directamente desde node_modules
-npx vite
 ```
 
 ---
@@ -548,9 +550,15 @@ src/
 │   ├── ConfigurePage.tsx # Configurar anonimización
 │   ├── ResultsPage.tsx  # Ver resultados
 │   └── DocsPage.tsx     # Documentación
+├── services/            # Servicios y utilidades
+│   └── config.ts        # Gestión de configuración
 ├── App.tsx              # Componente raíz
 ├── main.tsx             # Punto de entrada
 └── index.css            # Estilos globales
+
+public/
+├── config.json          # Configuración de la aplicación
+└── config.example.json  # Plantilla de configuración
 ```
 
 ---
@@ -564,42 +572,59 @@ src/
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '0.0.0.0',  // Escucha en todas las interfaces
+    host: '0.0.0.0',
     port: 5173
   }
 })
 ```
 
-**Luego ejecuta:**
-```bash
-npm run dev
+**Actualiza `public/config.json` con la IP del backend:**
+```json
+{
+  "api": {
+    "baseUrl": "http://192.168.1.X:8000"
+  }
+}
 ```
 
 **Accede desde otros dispositivos:**
-- Encuentra tu IP local (ver sección anterior)
+- Encuentra tu IP local
 - Desde otro dispositivo en la misma red: http://TU_IP:5173
 
 ---
 
-## 🔐 Seguridad en Producción
+## 🔐 Diferencias con Sistema de Variables de Entorno
 
-### Variables de Entorno
+Este proyecto **NO usa archivos .env** para el frontend. En su lugar, usa `config.json` por las siguientes razones:
 
-- **NUNCA** commits el archivo `.env` a git
-- **NUNCA** pongas secretos en variables `VITE_*` (son públicas)
-- Usa variables de entorno del servidor para secretos
+### Ventajas del Sistema JSON
 
-### HTTPS
+1. **Configuración en Tiempo de Ejecución**
+   - Puedes cambiar la configuración sin recompilar
+   - Ideal para Docker y deployments
 
-En producción, siempre usa HTTPS:
+2. **Simplicidad**
+   - No necesitas prefijos `VITE_`
+   - Un solo archivo para toda la configuración
 
-```env
-VITE_API_URL=https://api.tu-dominio.com
-```
+3. **Consistencia con el Backend**
+   - El backend usa `credentials.json`
+   - El frontend usa `config.json`
+   - Sistema unificado
 
-### CORS
+4. **Despliegues Más Fáciles**
+   - Compila una vez
+   - Cambia `config.json` según el entorno
+   - Sin necesidad de rebuilds
 
-Asegúrate de que el backend tenga configurado CORS correctamente para tu dominio de producción.
+### Si Necesitas Variables de Entorno
+
+Si en el futuro necesitas usar variables de entorno (no recomendado para este proyecto), recuerda:
+
+- Las variables deben tener prefijo `VITE_`
+- Se inyectan durante el build
+- No son dinámicas
+- Ejemplo: `VITE_API_URL`
 
 ---
 
@@ -610,8 +635,8 @@ Asegúrate de que el backend tenga configurado CORS correctamente para tu domini
 | Operación | Tiempo |
 |-----------|--------|
 | `npm install` | 2-5 minutos |
-| Inicio del servidor (`npm run dev`) | 1-3 segundos |
-| Hot reload (cambio de código) | < 1 segundo |
+| Inicio del servidor | 1-3 segundos |
+| Hot reload | < 1 segundo |
 | `npm run build` | 5-10 segundos |
 
 ### Tamaños
@@ -632,25 +657,22 @@ Asegúrate de que el backend tenga configurado CORS correctamente para tu domini
 **Windows:**
 ```cmd
 npm install
-copy .env.example .env
+copy public\config.example.json public\config.json
 ```
 
 **Ubuntu:**
 ```bash
 npm install
-cp .env.example .env
+cp public/config.example.json public/config.json
 ```
 
 ### Uso Diario
 
 ```bash
-# Iniciar desarrollo
 npm run dev
 
-# Compilar para producción
 npm run build
 
-# Probar el build
 npm run preview
 ```
 
@@ -671,7 +693,7 @@ npm run preview
 - [ ] npm instalado
 - [ ] Proyecto descargado/clonado
 - [ ] Dependencias instaladas (`npm install`)
-- [ ] Archivo `.env` configurado
+- [ ] Archivo `public/config.json` creado y configurado
 - [ ] Backend corriendo en puerto 8000
 - [ ] Frontend corriendo en puerto 5173
 - [ ] Aplicación accesible en http://localhost:5173

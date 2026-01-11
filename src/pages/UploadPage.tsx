@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Trash2, Eye, Info } from 'lucide-react';
+import { getApiUrl, getConfig } from '../services/config';
 
 interface Dataset {
   id: string;
@@ -32,7 +33,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onNavigate }) => {
   const fetchDatasets = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/datasets');
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/datasets`);
       if (response.ok) {
         const data = await response.json();
         setDatasets(data);
@@ -79,13 +81,17 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onNavigate }) => {
     setError('');
     setSuccess('');
 
-    if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
-      setError('Por favor sube un archivo Excel (.xlsx, .xls) o CSV');
+    const config = getConfig();
+    const acceptedFormats = config.upload.acceptedFormats.join('|').replace(/\./g, '\\.');
+    const formatRegex = new RegExp(`\\.(${acceptedFormats.replace(/\|/g, '|').replace(/\\\./g, '')})$`);
+
+    if (!formatRegex.test(file.name)) {
+      setError(`Por favor sube un archivo válido (${config.upload.acceptedFormats.join(', ')})`);
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      setError('El tamaño del archivo debe ser menor a 50MB');
+    if (file.size > config.upload.maxFileSizeMB * 1024 * 1024) {
+      setError(`El tamaño del archivo debe ser menor a ${config.upload.maxFileSizeMB}MB`);
       return;
     }
 
@@ -95,7 +101,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onNavigate }) => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:8000/api/datasets/upload', {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/datasets/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -116,8 +123,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onNavigate }) => {
     } catch (error: any) {
       console.error('Error al cargar archivo:', error);
 
+      const apiUrl = getApiUrl();
       if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-        setError('No se puede conectar al servidor. Asegúrate de que el backend esté ejecutándose en http://localhost:8000');
+        setError(`No se puede conectar al servidor. Asegúrate de que el backend esté ejecutándose en ${apiUrl}`);
       } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
         setError('Error de conexión. Verifica que el backend esté activo y accesible.');
       } else {
@@ -130,7 +138,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onNavigate }) => {
 
   const viewPreview = async (datasetId: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/datasets/${datasetId}`);
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/datasets/${datasetId}`);
       if (response.ok) {
         const data = await response.json();
         setPreviewData(data);

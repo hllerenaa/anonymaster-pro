@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Shield, TrendingDown, Clock, CheckCircle, Eye, Download, AlertCircle } from 'lucide-react';
+import { getApiUrl } from '../services/config';
 
 interface Result {
   id: string;
@@ -50,7 +51,8 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ selectedResultId, onNa
 
   const fetchResults = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/results');
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/results`);
       if (response.ok) {
         const data = await response.json();
         setResults(data);
@@ -63,8 +65,9 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ selectedResultId, onNa
       }
     } catch (error: any) {
       console.error('Error al conectar con el servidor:', error);
+      const apiUrl = getApiUrl();
       if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-        setError('No se puede conectar al servidor. Verifica que el backend esté ejecutándose en http://localhost:8000');
+        setError(`No se puede conectar al servidor. Verifica que el backend esté ejecutándose en ${apiUrl}`);
       } else {
         setError('Error al cargar los resultados');
       }

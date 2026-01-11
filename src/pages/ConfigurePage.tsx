@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Save, Play, Info, CheckCircle2 } from 'lucide-react';
+import { getApiUrl } from '../services/config';
 
 interface Dataset {
   id: string;
@@ -62,7 +63,8 @@ export const ConfigurePage: React.FC<ConfigurePageProps> = ({ selectedDatasetId,
 
   const fetchDatasets = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/datasets');
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/datasets`);
       if (response.ok) {
         const data = await response.json();
         setDatasets(data);
@@ -147,7 +149,8 @@ export const ConfigurePage: React.FC<ConfigurePageProps> = ({ selectedDatasetId,
     try {
       saveToLocalStorage();
 
-      const response = await fetch('http://localhost:8000/api/configs', {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/configs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,8 +178,9 @@ export const ConfigurePage: React.FC<ConfigurePageProps> = ({ selectedDatasetId,
       }
     } catch (error: any) {
       console.error('Error al guardar configuración:', error);
+      const apiUrl = getApiUrl();
       if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-        setError('No se puede conectar al servidor. Verifica que el backend esté ejecutándose en http://localhost:8000');
+        setError(`No se puede conectar al servidor. Verifica que el backend esté ejecutándose en ${apiUrl}`);
       } else {
         setError(error.message || 'Ocurrió un error inesperado');
       }
@@ -194,7 +198,8 @@ export const ConfigurePage: React.FC<ConfigurePageProps> = ({ selectedDatasetId,
     try {
       saveToLocalStorage();
 
-      const configResponse = await fetch('http://localhost:8000/api/configs', {
+      const apiUrl = getApiUrl();
+      const configResponse = await fetch(`${apiUrl}/api/configs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -221,7 +226,7 @@ export const ConfigurePage: React.FC<ConfigurePageProps> = ({ selectedDatasetId,
 
       const config = await configResponse.json();
 
-      const processResponse = await fetch('http://localhost:8000/api/process', {
+      const processResponse = await fetch(`${apiUrl}/api/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -247,8 +252,9 @@ export const ConfigurePage: React.FC<ConfigurePageProps> = ({ selectedDatasetId,
       }
     } catch (error: any) {
       console.error('Error en el proceso:', error);
+      const apiUrl = getApiUrl();
       if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-        setError('No se puede conectar al servidor. Verifica que el backend esté ejecutándose en http://localhost:8000');
+        setError(`No se puede conectar al servidor. Verifica que el backend esté ejecutándose en ${apiUrl}`);
       } else {
         setError(error.message || 'Ocurrió un error inesperado');
       }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Database, Shield, TrendingUp, Clock, ArrowRight, CheckCircle } from 'lucide-react';
+import { getApiUrl } from '../services/config';
 
 interface Stats {
   total_datasets: number;
@@ -23,7 +24,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/stats');
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/stats`);
       if (response.ok) {
         const data = await response.json();
         setStats(data);
