@@ -1,0 +1,57 @@
+{
+  "application": {
+    "name": "Data Anonymization System",
+    "version": "1.0.0",
+    "environment": "development"
+  },
+  "frontend": {
+    "port_dev": 5173,
+    "port_preview": 4173,
+    "build_directory": "dist"
+  },
+  "backend": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "workers": 4,
+    "max_upload_size_mb": 50,
+    "allowed_extensions": [".csv", ".xlsx", ".xls"],
+    "cors_origins": ["http://localhost:5173", "http://localhost:4173"]
+  },
+  "database": {
+    "provider": "supabase",
+    "url": "https://tu-proyecto.supabase.co",
+    "anon_key": "tu-clave-anonima-aqui",
+    "service_role_key": "tu-clave-service-role-aqui",
+    "schema": "public",
+    "tables": {
+      "datasets": "datasets",
+      "configs": "anonymization_configs",
+      "results": "anonymization_results",
+      "audit": "audit_logs"
+    }
+  },
+  "nginx": {
+    "port_http": 80,
+    "port_https": 443,
+    "server_name": "localhost",
+    "client_max_body_size": "50M"
+  },
+  "security": {
+    "enable_authentication": false,
+    "enable_rls": true,
+    "public_access": true
+  },
+  "anonymization": {
+    "default_k_anonymity": 5,
+    "default_l_diversity": 3,
+    "default_epsilon": 1.0,
+    "max_k_anonymity": 100,
+    "max_l_diversity": 50,
+    "max_epsilon": 10.0
+  },
+  "logging": {
+    "level": "INFO",
+    "backend_log_file": "backend/logs/app.log",
+    "enable_audit_log": true
+  }
+}
