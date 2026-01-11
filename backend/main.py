@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import pandas as pd
 import numpy as np
@@ -70,108 +71,481 @@ def log_audit(user_id: str, action: str, resource_type: str, resource_id: str, d
     except Exception as e:
         logger.error(f"Failed to log audit: {str(e)}")
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def read_root():
-    return {
-        "message": "Data Anonymization System API",
-        "version": "1.0.0",
-        "database": "PostgreSQL",
-        "status": "online",
-        "documentation": {
-            "description": "API para anonimización de datos con técnicas avanzadas de privacidad",
-            "endpoints": [
-                {
-                    "method": "GET",
-                    "path": "/",
-                    "description": "Información general de la API y lista de endpoints disponibles"
-                },
-                {
-                    "method": "POST",
-                    "path": "/api/datasets/upload",
-                    "description": "Subir un nuevo dataset (CSV o Excel)",
-                    "accepts": "multipart/form-data",
-                    "params": ["file (CSV o XLSX, máx 50MB)"]
-                },
-                {
-                    "method": "GET",
-                    "path": "/api/datasets",
-                    "description": "Listar todos los datasets subidos por el usuario",
-                    "returns": "Array de datasets con metadata (nombre, filas, columnas, fecha)"
-                },
-                {
-                    "method": "GET",
-                    "path": "/api/datasets/{dataset_id}",
-                    "description": "Obtener información detallada de un dataset específico",
-                    "params": ["dataset_id (UUID)"],
-                    "returns": "Dataset completo con schema y primeras filas"
-                },
-                {
-                    "method": "POST",
-                    "path": "/api/configs",
-                    "description": "Crear una nueva configuración de anonimización",
-                    "accepts": "application/json",
-                    "params": ["dataset_id", "name", "column_mappings", "techniques", "global_params"],
-                    "techniques": [
-                        "generalization - Generalizar valores (rangos, categorías)",
-                        "suppression - Suprimir valores sensibles",
-                        "pseudonymization - Reemplazar con pseudónimos",
-                        "noise_addition - Agregar ruido aleatorio (privacidad diferencial)",
-                        "masking - Enmascarar datos parcialmente"
-                    ]
-                },
-                {
-                    "method": "GET",
-                    "path": "/api/configs",
-                    "description": "Listar todas las configuraciones de anonimización",
-                    "query_params": ["dataset_id (opcional)"],
-                    "returns": "Array de configuraciones guardadas"
-                },
-                {
-                    "method": "POST",
-                    "path": "/api/process",
-                    "description": "Procesar la anonimización de un dataset con una configuración",
-                    "accepts": "application/json",
-                    "params": ["dataset_id (UUID)", "config_id (UUID)"],
-                    "returns": "Resultado de la anonimización con métricas de privacidad"
-                },
-                {
-                    "method": "GET",
-                    "path": "/api/results",
-                    "description": "Listar todos los resultados de anonimización procesados",
-                    "returns": "Array de resultados con métricas (K-anonimato, L-diversidad, etc.)"
-                },
-                {
-                    "method": "GET",
-                    "path": "/api/results/{result_id}",
-                    "description": "Obtener un resultado específico con los datos anonimizados",
-                    "params": ["result_id (UUID)"],
-                    "returns": "Dataset anonimizado completo y métricas detalladas"
-                },
-                {
-                    "method": "GET",
-                    "path": "/api/stats",
-                    "description": "Obtener estadísticas generales del sistema",
-                    "returns": "Total de datasets, configuraciones, resultados y métricas agregadas"
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Data Anonymization System API</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 40px 20px;
+            }
+
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                overflow: hidden;
+            }
+
+            .header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 60px 40px;
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 3rem;
+                margin-bottom: 10px;
+                font-weight: 700;
+            }
+
+            .header p {
+                font-size: 1.2rem;
+                opacity: 0.95;
+                margin-bottom: 20px;
+            }
+
+            .badges {
+                display: flex;
+                gap: 15px;
+                justify-content: center;
+                flex-wrap: wrap;
+                margin-top: 30px;
+            }
+
+            .badge {
+                background: rgba(255, 255, 255, 0.2);
+                padding: 8px 20px;
+                border-radius: 20px;
+                font-size: 0.9rem;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+
+            .content {
+                padding: 40px;
+            }
+
+            .section {
+                margin-bottom: 50px;
+            }
+
+            .section-title {
+                font-size: 2rem;
+                color: #667eea;
+                margin-bottom: 20px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #667eea;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
+                margin-top: 20px;
+            }
+
+            .card {
+                background: #f8f9fa;
+                border-radius: 12px;
+                padding: 25px;
+                border: 2px solid #e9ecef;
+                transition: all 0.3s ease;
+            }
+
+            .card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+                border-color: #667eea;
+            }
+
+            .endpoint {
+                background: white;
+                border-left: 4px solid #667eea;
+                padding: 20px;
+                margin-bottom: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+
+            .method {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 6px;
+                font-weight: 700;
+                font-size: 0.85rem;
+                margin-right: 10px;
+            }
+
+            .method.get {
+                background: #10b981;
+                color: white;
+            }
+
+            .method.post {
+                background: #3b82f6;
+                color: white;
+            }
+
+            .path {
+                font-family: 'Courier New', monospace;
+                color: #667eea;
+                font-weight: 600;
+                font-size: 1.1rem;
+                margin-bottom: 10px;
+            }
+
+            .description {
+                color: #6b7280;
+                line-height: 1.6;
+                margin-top: 10px;
+            }
+
+            .params {
+                margin-top: 12px;
+                padding: 12px;
+                background: #f9fafb;
+                border-radius: 6px;
+            }
+
+            .params-title {
+                font-weight: 600;
+                color: #374151;
+                margin-bottom: 8px;
+                font-size: 0.9rem;
+            }
+
+            .param-item {
+                padding: 6px 12px;
+                background: white;
+                border-radius: 4px;
+                margin: 4px 0;
+                font-size: 0.85rem;
+                color: #4b5563;
+                font-family: 'Courier New', monospace;
+            }
+
+            .technique {
+                padding: 10px 15px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 8px;
+                margin: 8px 0;
+                font-size: 0.9rem;
+            }
+
+            .metric-card {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 12px;
+                margin: 10px 0;
+            }
+
+            .metric-title {
+                font-weight: 700;
+                font-size: 1.1rem;
+                margin-bottom: 8px;
+            }
+
+            .metric-desc {
+                opacity: 0.95;
+                line-height: 1.5;
+            }
+
+            .model-item {
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 10px;
+                margin: 10px 0;
+                font-weight: 500;
+            }
+
+            .info-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+                margin-top: 20px;
+            }
+
+            .info-item {
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 10px;
+                border-left: 4px solid #667eea;
+            }
+
+            .info-label {
+                font-size: 0.85rem;
+                color: #6b7280;
+                margin-bottom: 5px;
+                text-transform: uppercase;
+                font-weight: 600;
+            }
+
+            .info-value {
+                font-size: 1.1rem;
+                color: #111827;
+                font-weight: 600;
+            }
+
+            .footer {
+                background: #1f2937;
+                color: white;
+                text-align: center;
+                padding: 30px;
+                font-size: 0.9rem;
+            }
+
+            @media (max-width: 768px) {
+                .header h1 {
+                    font-size: 2rem;
                 }
-            ],
-            "metrics": {
-                "k_anonymity": "Garantiza que cada registro es indistinguible de al menos K-1 registros",
-                "l_diversity": "Garantiza al menos L valores diferentes en atributos sensibles por grupo",
-                "information_loss": "Porcentaje de información perdida durante la anonimización"
-            },
-            "privacy_models": [
-                "K-Anonymity - Indistinguibilidad en grupos de K registros",
-                "L-Diversity - Diversidad en atributos sensibles",
-                "Differential Privacy - Privacidad con garantías matemáticas"
-            ]
-        },
-        "support": {
-            "formats": ["CSV", "Excel (.xlsx, .xls)"],
-            "max_upload_size": "50 MB",
-            "cors": "Habilitado para todos los orígenes",
-            "authentication": "Deshabilitada (modo público)"
-        }
-    }
+
+                .content {
+                    padding: 20px;
+                }
+
+                .section-title {
+                    font-size: 1.5rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔒 Data Anonymization System</h1>
+                <p>API para anonimización de datos con técnicas avanzadas de privacidad</p>
+                <div class="badges">
+                    <span class="badge">✅ Online</span>
+                    <span class="badge">v1.0.0</span>
+                    <span class="badge">PostgreSQL</span>
+                    <span class="badge">FastAPI</span>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="section">
+                    <h2 class="section-title">📊 Información del Sistema</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Formatos</div>
+                            <div class="info-value">CSV, Excel</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Tamaño máximo</div>
+                            <div class="info-value">50 MB</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">CORS</div>
+                            <div class="info-value">Habilitado</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Autenticación</div>
+                            <div class="info-value">Pública</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">🚀 Endpoints de la API</h2>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method get">GET</span>
+                            <span class="path">/</span>
+                        </div>
+                        <div class="description">Información general de la API y documentación completa</div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method post">POST</span>
+                            <span class="path">/api/datasets/upload</span>
+                        </div>
+                        <div class="description">Subir un nuevo dataset (CSV o Excel) para su posterior anonimización</div>
+                        <div class="params">
+                            <div class="params-title">Parámetros:</div>
+                            <div class="param-item">file: UploadFile (CSV o XLSX, máx 50MB)</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method get">GET</span>
+                            <span class="path">/api/datasets</span>
+                        </div>
+                        <div class="description">Listar todos los datasets subidos con metadata (nombre, filas, columnas, fecha)</div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method get">GET</span>
+                            <span class="path">/api/datasets/{dataset_id}</span>
+                        </div>
+                        <div class="description">Obtener información detallada de un dataset específico con schema y preview</div>
+                        <div class="params">
+                            <div class="params-title">Parámetros:</div>
+                            <div class="param-item">dataset_id: UUID</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method post">POST</span>
+                            <span class="path">/api/configs</span>
+                        </div>
+                        <div class="description">Crear una nueva configuración de anonimización con técnicas específicas</div>
+                        <div class="params">
+                            <div class="params-title">Parámetros JSON:</div>
+                            <div class="param-item">dataset_id: UUID</div>
+                            <div class="param-item">name: string</div>
+                            <div class="param-item">column_mappings: array</div>
+                            <div class="param-item">techniques: array</div>
+                            <div class="param-item">global_params: object</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method get">GET</span>
+                            <span class="path">/api/configs</span>
+                        </div>
+                        <div class="description">Listar todas las configuraciones de anonimización guardadas</div>
+                        <div class="params">
+                            <div class="params-title">Query params (opcional):</div>
+                            <div class="param-item">dataset_id: UUID</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method post">POST</span>
+                            <span class="path">/api/process</span>
+                        </div>
+                        <div class="description">Procesar la anonimización de un dataset aplicando una configuración específica</div>
+                        <div class="params">
+                            <div class="params-title">Parámetros JSON:</div>
+                            <div class="param-item">dataset_id: UUID</div>
+                            <div class="param-item">config_id: UUID</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method get">GET</span>
+                            <span class="path">/api/results</span>
+                        </div>
+                        <div class="description">Listar todos los resultados de anonimización con métricas de privacidad</div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method get">GET</span>
+                            <span class="path">/api/results/{result_id}</span>
+                        </div>
+                        <div class="description">Obtener un resultado específico con datos anonimizados y métricas detalladas</div>
+                        <div class="params">
+                            <div class="params-title">Parámetros:</div>
+                            <div class="param-item">result_id: UUID</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div>
+                            <span class="method get">GET</span>
+                            <span class="path">/api/stats</span>
+                        </div>
+                        <div class="description">Obtener estadísticas generales del sistema (datasets, configs, resultados)</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">🛠️ Técnicas de Anonimización</h2>
+                    <div class="technique">
+                        <strong>Generalization</strong> - Generalizar valores en rangos o categorías más amplias
+                    </div>
+                    <div class="technique">
+                        <strong>Suppression</strong> - Suprimir valores sensibles reemplazándolos con asteriscos
+                    </div>
+                    <div class="technique">
+                        <strong>Pseudonymization</strong> - Reemplazar datos reales con pseudónimos consistentes
+                    </div>
+                    <div class="technique">
+                        <strong>Noise Addition</strong> - Agregar ruido aleatorio usando privacidad diferencial
+                    </div>
+                    <div class="technique">
+                        <strong>Masking</strong> - Enmascarar parcialmente datos sensibles (ej: email, teléfono)
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">📈 Métricas de Privacidad</h2>
+                    <div class="metric-card">
+                        <div class="metric-title">K-Anonymity</div>
+                        <div class="metric-desc">
+                            Garantiza que cada registro es indistinguible de al menos K-1 registros similares,
+                            protegiendo contra ataques de re-identificación
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">L-Diversity</div>
+                        <div class="metric-desc">
+                            Garantiza al menos L valores diferentes en atributos sensibles por cada grupo equivalente,
+                            protegiendo contra ataques de homogeneidad
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">Information Loss</div>
+                        <div class="metric-desc">
+                            Mide el porcentaje de información perdida durante el proceso de anonimización,
+                            permitiendo evaluar el balance entre privacidad y utilidad
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">🔐 Modelos de Privacidad</h2>
+                    <div class="model-item">
+                        <strong>K-Anonymity</strong> - Indistinguibilidad en grupos de K registros
+                    </div>
+                    <div class="model-item">
+                        <strong>L-Diversity</strong> - Diversidad en atributos sensibles dentro de grupos
+                    </div>
+                    <div class="model-item">
+                        <strong>Differential Privacy</strong> - Privacidad con garantías matemáticas formales
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p><strong>Data Anonymization System API v1.0.0</strong></p>
+                <p>Sistema de anonimización con técnicas avanzadas de privacidad | PostgreSQL | FastAPI</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
 
 @app.post("/api/datasets/upload")
 async def upload_dataset(
