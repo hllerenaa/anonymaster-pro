@@ -10,16 +10,22 @@ Esta guía explica qué contiene cada carpeta del proyecto, su propósito, y cu�
 data-anonymization-system/
 │
 ├── backend/                    # Backend de Python (FastAPI)
+│   ├── database.py             # Conexión a PostgreSQL
+│   ├── main.py                 # API FastAPI
+│   └── requirements.txt        # Dependencias Python
+├── database/                   # Scripts SQL de PostgreSQL
+│   ├── create_database.sql     # Crear tablas
+│   ├── drop_database.sql       # Eliminar tablas
+│   └── README.md               # Documentación BD
 ├── dist/                       # Build de producción (generado)
 ├── node_modules/               # Dependencias de Node.js (generado)
 ├── src/                        # Código fuente del frontend (React)
 │   ├── components/             # Componentes reutilizables
-│   ├── contexts/               # Contextos de React
-│   ├── lib/                    # Librerías y utilidades
-│   └── pages/                  # Páginas de la aplicación
-├── supabase/                   # Configuración de base de datos
-│   └── migrations/             # Migraciones SQL
-├── .bolt/                      # Configuración de Bolt (IDE)
+│   ├── pages/                  # Páginas de la aplicación
+│   ├── App.tsx                 # Componente principal
+│   └── main.tsx                # Punto de entrada
+├── credentials.json            # Credenciales del sistema (no en git)
+├── credentials.example.json    # Template de credenciales
 └── [archivos de configuración] # package.json, vite.config.ts, etc.
 ```
 
@@ -37,13 +43,15 @@ data-anonymization-system/
 - FastAPI (framework web)
 - Python 3.8+
 - Pandas (procesamiento de datos)
-- Supabase (cliente de base de datos)
+- PostgreSQL (base de datos)
+- psycopg2 (cliente PostgreSQL)
 
 **Contenido:**
 
 ```
 backend/
 ├── main.py              # Aplicación principal FastAPI
+├── database.py          # Capa de conexión a PostgreSQL
 ├── requirements.txt     # Dependencias de Python
 ├── start.sh            # Script de inicio (Linux/Mac)
 ├── start.bat           # Script de inicio (Windows)
@@ -58,7 +66,7 @@ backend/
   - Define todos los endpoints de la API
   - Implementa algoritmos de anonimización
   - Maneja subida de archivos
-  - Se conecta a Supabase
+  - Se conecta a PostgreSQL via database.py
 
   **Endpoints principales:**
   - `GET /` - Estado del servidor
@@ -68,6 +76,12 @@ backend/
   - `POST /api/process` - Procesar anonimización
   - `GET /api/results` - Obtener resultados
 
+- **`database.py`** - Capa de acceso a datos
+  - Pool de conexiones a PostgreSQL
+  - Funciones CRUD (Create, Read, Update, Delete)
+  - Manejo de transacciones
+  - Lee credenciales de credentials.json
+
 - **`requirements.txt`** - Dependencias del proyecto
   ```
   fastapi
@@ -76,7 +90,8 @@ backend/
   numpy
   python-multipart
   openpyxl
-  supabase
+  psycopg2-binary
+  python-dotenv
   ```
 
 - **`start.sh` / `start.bat`** - Scripts de inicio automático
@@ -92,389 +107,320 @@ backend/
 **Cuándo modificar:**
 - ✏️ Agregar nuevas técnicas de anonimización → Edita `main.py`
 - ✏️ Agregar nuevos endpoints → Edita `main.py`
-- ✏️ Cambiar puerto del servidor → Edita `main.py` (última línea)
+- ✏️ Cambiar puerto del servidor → Edita `credentials.json`
 - ✏️ Agregar nuevas dependencias → Actualiza `requirements.txt`
 - ✏️ Cambiar validaciones de archivos → Edita función `upload_dataset()`
+- ✏️ Modificar queries de base de datos → Edita `database.py`
 
 **NO modificar:**
 - ❌ `venv/` - Se genera automáticamente
-- ❌ `__pycache__/` - Archivos cache de Python
+- ❌ `__pycache__/` - Caché de Python
+
+---
+
+### 🗄️ `/database` - Scripts SQL
+
+**Propósito:** Contiene todos los scripts SQL necesarios para crear, mantener y gestionar la base de datos PostgreSQL.
+
+**Contenido:**
+
+```
+database/
+├── create_database.sql  # Script para crear todas las tablas
+├── drop_database.sql    # Script para eliminar todas las tablas
+└── README.md            # Guía de gestión de BD
+```
+
+**Archivos importantes:**
+
+- **`create_database.sql`** - Script de creación completo
+  - Crea todas las tablas (datasets, anonymization_configs, etc.)
+  - Define índices para mejorar rendimiento
+  - Agrega comentarios descriptivos
+  - Habilita extensión uuid-ossp
+
+- **`drop_database.sql`** - Script de limpieza
+  - ⚠️ PELIGRO: Elimina todas las tablas
+  - Respeta orden de foreign keys
+  - Solo usar en desarrollo
+
+- **`README.md`** - Documentación completa
+  - Instalación de PostgreSQL
+  - Creación de base de datos
+  - Comandos útiles de psql
+  - Backup y restauración
+  - Solución de problemas
+
+**Cuándo modificar:**
+- ✏️ Agregar nueva tabla → Edita `create_database.sql`
+- ✏️ Agregar columna a tabla existente → Crea nuevo script de migración
+- ✏️ Cambiar estructura de datos → Edita `create_database.sql`
+
+**NO modificar si ya tienes datos:**
+- ⚠️ No ejecutes `drop_database.sql` en producción
+- ⚠️ Haz backup antes de modificar estructura
 
 ---
 
 ### ⚛️ `/src` - Código Fuente del Frontend
 
-**Propósito:** Contiene toda la interfaz de usuario de React.
+**Propósito:** Contiene todo el código del frontend React/TypeScript.
 
 **Tecnologías:**
 - React 18
 - TypeScript
+- Vite (build tool)
 - Tailwind CSS
-- Supabase JS Client
+- Lucide React (iconos)
 
 **Contenido:**
 
 ```
 src/
 ├── components/          # Componentes reutilizables
-│   ├── Auth.tsx        # Componente de autenticación
-│   └── Layout.tsx      # Layout principal
-├── contexts/           # Contextos de React
-│   └── AuthContext.tsx # Contexto de autenticación
-├── lib/                # Librerías y configuración
-│   └── supabase.ts     # Cliente de Supabase
-├── pages/              # Páginas de la aplicación
-│   ├── HomePage.tsx    # Página de inicio
-│   ├── UploadPage.tsx  # Subir datasets
+│   └── Layout.tsx       # Layout principal
+├── pages/               # Páginas de la aplicación
+│   ├── HomePage.tsx     # Página de inicio
+│   ├── UploadPage.tsx   # Subir datasets
 │   ├── ConfigurePage.tsx # Configurar anonimización
-│   ├── ResultsPage.tsx # Ver resultados
-│   └── DocsPage.tsx    # Documentación
-├── App.tsx             # Componente principal y router
-├── main.tsx            # Punto de entrada
-├── index.css           # Estilos globales
-└── vite-env.d.ts       # Tipos de TypeScript
+│   ├── ResultsPage.tsx  # Ver resultados
+│   └── DocsPage.tsx     # Documentación
+├── App.tsx              # Componente raíz
+├── main.tsx             # Punto de entrada
+├── index.css            # Estilos globales
+└── vite-env.d.ts        # Tipos de Vite
 ```
 
-**Cuándo modificar:**
-- ✏️ Cambiar diseño → Edita archivos en `/pages` o `/components`
-- ✏️ Agregar nueva página → Crea archivo en `/pages`, actualiza `App.tsx`
-- ✏️ Cambiar colores/estilos → Edita `index.css` o `tailwind.config.js`
-- ✏️ Agregar autenticación → Modifica `AuthContext.tsx`
+**Estructura de componentes:**
 
----
-
-### 🧩 `/src/components` - Componentes Reutilizables
-
-**Propósito:** Componentes de UI que se usan en múltiples lugares.
-
-**Archivos:**
+#### `/src/components` - Componentes Reutilizables
 
 - **`Layout.tsx`** - Layout principal de la aplicación
-  - Barra de navegación superior
-  - Menú de navegación
-  - Estructura base de la página
-  - Footer
-
-- **`Auth.tsx`** - Componente de autenticación (actualmente no usado)
-  - Formularios de login/registro
-  - Integración con Supabase Auth
+  - Sidebar de navegación
+  - Header
+  - Contenedor del contenido
+  - Gestión de navegación entre páginas
 
 **Cuándo modificar:**
-- ✏️ Cambiar navegación → Edita `Layout.tsx`
-- ✏️ Agregar nuevo componente → Crea nuevo archivo `.tsx`
-- ✏️ Activar autenticación → Usa `Auth.tsx`
+- ✏️ Cambiar diseño global → Edita `Layout.tsx`
+- ✏️ Agregar nuevo componente reutilizable → Crea archivo en `components/`
 
-**Mejores prácticas:**
-- Componentes pequeños y enfocados
-- Reutilizables en múltiples páginas
-- Props bien tipadas con TypeScript
-- Nombres descriptivos
+#### `/src/pages` - Páginas de la Aplicación
 
----
+- **`HomePage.tsx`** - Dashboard principal
+  - Muestra estadísticas generales
+  - Lista datasets recientes
+  - Acceso rápido a funciones
 
-### 🧠 `/src/contexts` - Contextos de React
+- **`UploadPage.tsx`** - Subida de datasets
+  - Drag & drop de archivos
+  - Vista previa de datos
+  - Soporte para CSV y Excel
 
-**Propósito:** Gestión de estado global de la aplicación.
+- **`ConfigurePage.tsx`** - Configuración de anonimización
+  - Clasificación de columnas
+  - Selección de técnicas
+  - Configuración de parámetros (K, L, epsilon)
 
-**Archivos:**
+- **`ResultsPage.tsx`** - Visualización de resultados
+  - Comparación antes/después
+  - Métricas de privacidad
+  - Descarga de datos anonimizados
 
-- **`AuthContext.tsx`** - Contexto de autenticación
-  - Estado del usuario actual
-  - Funciones de login/logout/signup
-  - Sesión de Supabase
-  - Protección de rutas
-
-**Cuándo modificar:**
-- ✏️ Agregar más información del usuario → Edita `AuthContext.tsx`
-- ✏️ Crear nuevo contexto global → Crea nuevo archivo
-- ✏️ Cambiar lógica de autenticación → Modifica funciones en `AuthContext.tsx`
-
-**Ejemplo de nuevo contexto:**
-```typescript
-// ThemeContext.tsx
-import { createContext, useContext, useState } from 'react';
-
-const ThemeContext = createContext();
-
-export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState('light');
-
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-}
-
-export const useTheme = () => useContext(ThemeContext);
-```
-
----
-
-### 📚 `/src/lib` - Librerías y Utilidades
-
-**Propósito:** Configuración de servicios externos y funciones utilitarias.
-
-**Archivos:**
-
-- **`supabase.ts`** - Cliente de Supabase
-  - Inicialización del cliente
-  - Usa variables de entorno
-  - Exporta instancia única
+- **`DocsPage.tsx`** - Documentación integrada
+  - Guía de uso
+  - Explicación de técnicas
+  - Ejemplos
 
 **Cuándo modificar:**
-- ✏️ Configurar Supabase → Ya está configurado, solo cambia `.env`
-- ✏️ Agregar nuevo servicio → Crea nuevo archivo (ej: `analytics.ts`)
-- ✏️ Crear funciones utilitarias → Crea archivo (ej: `utils.ts`)
+- ✏️ Agregar nueva funcionalidad → Edita página correspondiente
+- ✏️ Cambiar UI/UX → Edita componentes de página
+- ✏️ Agregar nueva página → Crea archivo en `pages/` y actualiza `App.tsx`
 
-**Ejemplos de utilidades comunes:**
-```typescript
-// utils.ts
-export function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('es-ES');
-}
+#### Archivos raíz de `/src`
 
-export function formatFileSize(bytes: number) {
-  return (bytes / 1024 / 1024).toFixed(2) + ' MB';
-}
-```
+- **`App.tsx`** - Componente principal
+  - Gestión de rutas (cliente)
+  - Estado global de navegación
+  - Renderiza páginas según ruta actual
 
----
+- **`main.tsx`** - Punto de entrada
+  - Monta la aplicación React
+  - Configuración inicial
 
-### 📄 `/src/pages` - Páginas de la Aplicación
-
-**Propósito:** Componentes de página completa, cada uno corresponde a una ruta.
-
-**Archivos:**
-
-1. **`HomePage.tsx`** - Página de inicio
-   - Bienvenida
-   - Descripción de características
-   - Llamados a la acción
-
-2. **`UploadPage.tsx`** - Subir datasets
-   - Drag & drop de archivos
-   - Lista de datasets
-   - Previsualización
-
-3. **`ConfigurePage.tsx`** - Configurar anonimización
-   - Wizard de 3 pasos
-   - Mapeo de columnas
-   - Selección de técnicas
-   - Parámetros de privacidad
-
-4. **`ResultsPage.tsx`** - Ver resultados
-   - Métricas de privacidad
-   - Comparación antes/después
-   - Descarga de datos
-
-5. **`DocsPage.tsx`** - Documentación
-   - Guía de uso
-   - Explicación de técnicas
-   - FAQ
-
-**Cuándo modificar:**
-- ✏️ Cambiar contenido de página → Edita el archivo correspondiente
-- ✏️ Agregar nueva página → Crea nuevo archivo, actualiza rutas en `App.tsx`
-- ✏️ Modificar flujo de usuario → Ajusta lógica en las páginas
-
----
-
-### 🗄️ `/supabase` - Base de Datos
-
-**Propósito:** Gestión de esquema y migraciones de base de datos.
-
-**Contenido:**
-
-```
-supabase/
-└── migrations/
-    ├── 20260111031149_create_anonymization_tables.sql
-    └── 20260111032300_update_policies_for_public_access.sql
-```
-
-**Archivos:**
-
-1. **`create_anonymization_tables.sql`** - Migración inicial
-   - Crea tablas: datasets, configs, results, audit
-   - Define estructuras y tipos
-   - Crea índices
-   - Habilita RLS
-
-2. **`update_policies_for_public_access.sql`** - Políticas de acceso
-   - Configura Row Level Security
-   - Permite acceso público sin autenticación
-
-**Cuándo modificar:**
-- ✏️ Cambiar estructura de tablas → Crea nueva migración
-- ✏️ Agregar nueva tabla → Crea nueva migración
-- ✏️ Cambiar políticas de seguridad → Crea nueva migración
-
-**Crear nueva migración:**
-```bash
-# Formato de nombre: [timestamp]_[descripcion].sql
-supabase migration new add_description_column
-```
-
-**Ejemplo de migración:**
-```sql
-/*
-  # Add description column
-
-  1. Changes
-    - Add description to datasets table
-*/
-
-ALTER TABLE datasets ADD COLUMN IF NOT EXISTS description text DEFAULT '';
-```
+- **`index.css`** - Estilos globales
+  - Configuración de Tailwind CSS
+  - Reset CSS
+  - Variables globales
 
 **NO modificar:**
-- ❌ Migraciones existentes ya aplicadas
-- ❌ Siempre crear nuevas migraciones para cambios
+- ❌ `vite-env.d.ts` - Generado automáticamente
 
 ---
 
 ### 📦 `/dist` - Build de Producción
 
-**Propósito:** Archivos compilados listos para producción.
+**Propósito:** Contiene la versión compilada y optimizada del frontend.
+
+**Generado por:** `npm run build`
 
 **Contenido:**
 ```
 dist/
 ├── index.html           # HTML principal
-├── assets/              # JS, CSS, imágenes optimizadas
-│   ├── index-[hash].js
-│   └── index-[hash].css
-└── _redirects           # Configuración de rutas (SPA)
+├── assets/              # CSS y JS compilados
+│   ├── index-[hash].js  # JavaScript minificado
+│   └── index-[hash].css # CSS minificado
+└── [otros archivos]     # Favicon, imágenes, etc.
 ```
 
-**Características:**
-- ✅ Código minificado
-- ✅ Assets optimizados
-- ✅ Nombres con hash para cache busting
-- ✅ Listo para servir con Nginx
-
-**Generado por:** `npm run build`
+**Cuándo se genera:**
+- Automáticamente al ejecutar `npm run build`
+- Antes de hacer deploy a producción
 
 **NO modificar manualmente:**
-- ❌ Cualquier archivo en `/dist`
-- ❌ Se regenera cada vez que ejecutas build
-
-**Cuándo regenerar:**
-```bash
-# Después de cualquier cambio en el código
-npm run build
-```
+- ❌ Nunca edites archivos en `dist/`
+- ❌ Esta carpeta se regenera cada build
+- ❌ Excluida de git (ver `.gitignore`)
 
 ---
 
 ### 📚 `/node_modules` - Dependencias de Node.js
 
-**Propósito:** Bibliotecas y dependencias de JavaScript instaladas.
-
-**Tamaño:** Puede ser muy grande (100-500 MB)
+**Propósito:** Contiene todas las dependencias del frontend instaladas por npm.
 
 **Generado por:** `npm install`
 
-**NO modificar nunca:**
-- ❌ Cualquier archivo dentro de `/node_modules`
+**Tamaño:** ~200-300 MB
+
+**NO modificar:**
+- ❌ Nunca edites archivos aquí
+- ❌ Excluida de git (ver `.gitignore`)
 - ❌ Se regenera con `npm install`
-- ❌ No se sube a git (está en `.gitignore`)
-
-**Cuándo regenerar:**
-```bash
-# Si falta o está corrupto
-rm -rf node_modules
-npm install
-```
 
 ---
 
-### 🔧 `/.bolt` - Configuración del IDE
+## 📄 Archivos de Configuración Raíz
 
-**Propósito:** Configuración específica de Bolt (IDE basado en navegador).
+### Credenciales y Configuración
 
-**Contenido:**
-```
-.bolt/
-├── config.json          # Configuración del proyecto
-└── prompt              # Instrucciones del sistema
-```
+- **`credentials.json`** - Credenciales del sistema (NO en git)
+  - Conexión a PostgreSQL
+  - Configuración del backend
+  - Configuración del frontend
+  - Ver `CREDENTIALS_SETUP.md` para guía completa
 
-**NO modificar a menos que:**
-- ✏️ Necesites cambiar configuración específica de Bolt
-- ✏️ Estés experimentando con prompts del sistema
+- **`credentials.example.json`** - Template de credenciales
+  - Ejemplo de estructura
+  - En git como referencia
 
----
+- **`.env`** - Variables de entorno (NO en git)
+  - Variables para desarrollo local
+  - URL del backend
 
-## 📋 Resumen de Cuándo Modificar Cada Carpeta
+- **`.env.example`** - Template de .env
+  - Ejemplo de variables
+  - En git como referencia
 
-| Carpeta | Modificar cuando... | NO modificar |
-|---------|---------------------|--------------|
-| `/backend` | Cambiar lógica de servidor, agregar endpoints | `venv/`, cache |
-| `/src/components` | Crear componentes reutilizables | - |
-| `/src/contexts` | Agregar estado global | - |
-| `/src/lib` | Configurar servicios, crear utilidades | - |
-| `/src/pages` | Modificar páginas existentes o crear nuevas | - |
-| `/supabase/migrations` | Cambiar estructura de BD | Migraciones aplicadas |
-| `/dist` | NUNCA (se regenera automáticamente) | TODO |
-| `/node_modules` | NUNCA (se instala automáticamente) | TODO |
-| `/.bolt` | Raramente, solo config avanzada | - |
+### Configuración de Node.js
 
----
+- **`package.json`** - Dependencias y scripts del frontend
+  ```json
+  {
+    "scripts": {
+      "dev": "vite",          // Servidor de desarrollo
+      "build": "vite build",  // Build de producción
+      "preview": "vite preview" // Preview del build
+    }
+  }
+  ```
 
-## 🔍 Cómo Encontrar Qué Modificar
+- **`package-lock.json`** - Versiones exactas de dependencias
+  - Generado automáticamente
+  - Asegura builds reproducibles
 
-### Quiero cambiar el diseño de una página
-👉 Ve a `/src/pages/[nombre]Page.tsx`
+### Configuración de TypeScript
 
-### Quiero agregar una nueva técnica de anonimización
-👉 Ve a `/backend/main.py` → función `apply_techniques()`
+- **`tsconfig.json`** - Configuración principal de TypeScript
+- **`tsconfig.app.json`** - Configuración para la aplicación
+- **`tsconfig.node.json`** - Configuración para scripts de Node
 
-### Quiero cambiar la navegación
-👉 Ve a `/src/components/Layout.tsx`
+### Configuración de Vite
 
-### Quiero agregar una nueva página
-👉 Crea archivo en `/src/pages/` y actualiza `/src/App.tsx`
+- **`vite.config.ts`** - Configuración de Vite
+  - Plugins (React)
+  - Alias de rutas
+  - Configuración de build
 
-### Quiero cambiar la estructura de la base de datos
-👉 Crea nueva migración en `/supabase/migrations/`
+### Configuración de Tailwind CSS
 
-### Quiero cambiar los colores del tema
-👉 Ve a `tailwind.config.js` o `/src/index.css`
+- **`tailwind.config.js`** - Configuración de Tailwind
+  - Colores personalizados
+  - Breakpoints
+  - Plugins
 
-### Quiero agregar una nueva dependencia
-👉 `npm install nombre-paquete` (actualiza `package.json`)
+- **`postcss.config.js`** - Configuración de PostCSS
+  - Autoprefixer
+  - Tailwind CSS
 
-### Quiero cambiar el puerto del backend
-👉 Ve a `/backend/main.py` → última línea
+### Configuración de ESLint
 
----
+- **`eslint.config.js`** - Configuración de linter
+  - Reglas de código
+  - Plugins de React
 
-## 💡 Consejos de Organización
+### Otros
 
-1. **Mantén componentes pequeños** - Si un componente supera 300 líneas, considera dividirlo
+- **`.gitignore`** - Archivos ignorados por Git
+  - `node_modules/`
+  - `dist/`
+  - `.env`
+  - `credentials.json`
 
-2. **Usa nombres descriptivos** - `UserProfileCard.tsx` es mejor que `Card.tsx`
-
-3. **Agrupa por funcionalidad** - Si tienes muchos componentes relacionados con gráficos, crea `/src/components/charts/`
-
-4. **Comenta código complejo** - Especialmente algoritmos de anonimización
-
-5. **No dupliques código** - Si ves el mismo código en varios lugares, crea una utilidad
-
-6. **Sigue convenciones** - Mantén el mismo estilo que el código existente
-
----
-
-## 📚 Recursos Adicionales
-
-- **React:** https://react.dev
-- **TypeScript:** https://www.typescriptlang.org/docs
-- **Tailwind CSS:** https://tailwindcss.com/docs
-- **FastAPI:** https://fastapi.tiangolo.com
-- **Supabase:** https://supabase.com/docs
+- **`index.html`** - Punto de entrada HTML
+  - Carga el JavaScript de React
+  - Configuración de meta tags
 
 ---
 
-**¡Ahora entiendes perfectamente la estructura del proyecto! 🎉**
+## 📋 Archivos de Documentación
+
+- **`README.md`** - Guía general del proyecto
+- **`POSTGRESQL_SETUP.md`** - Instalación de PostgreSQL
+- **`CREDENTIALS_SETUP.md`** - Configuración de credenciales
+- **`FOLDERS.md`** - Este archivo
+- **`PROJECT_STRUCTURE.md`** - Estructura detallada
+- **`DEPLOY_UBUNTU.md`** - Deploy en Ubuntu
+- **`START_BACKEND.md`** - Iniciar backend
+
+---
+
+## 🎯 Resumen Rápido
+
+### ¿Dónde modificar según tu necesidad?
+
+| Necesito... | Modificar... |
+|------------|-------------|
+| Agregar nueva técnica de anonimización | `backend/main.py` |
+| Cambiar diseño del frontend | `src/pages/*.tsx`, `src/components/*.tsx` |
+| Agregar nueva página | `src/pages/NuevaPagina.tsx` y `src/App.tsx` |
+| Cambiar estructura de base de datos | `database/create_database.sql` |
+| Agregar endpoint a la API | `backend/main.py` |
+| Cambiar puerto del backend | `credentials.json` |
+| Cambiar conexión a PostgreSQL | `credentials.json` |
+| Agregar dependencia Python | `backend/requirements.txt` |
+| Agregar dependencia Node.js | `npm install paquete` |
+
+### ¿Qué NUNCA tocar?
+
+| Carpeta/Archivo | Razón |
+|----------------|-------|
+| `node_modules/` | Generado automáticamente |
+| `dist/` | Build generado |
+| `venv/` | Entorno virtual Python |
+| `__pycache__/` | Caché de Python |
+| `package-lock.json` | Generado por npm |
+
+---
+
+**¡Ahora sabes qué hace cada carpeta del proyecto! 📚**
