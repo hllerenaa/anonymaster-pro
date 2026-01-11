@@ -1,0 +1,21 @@
+id,name,age,zipcode,salary,medical_condition
+1,John Doe,28,10001,55000,Diabetes
+2,Jane Smith,28,10001,56000,Diabetes
+3,Bob Johnson,28,10002,54000,Heart Disease
+4,Alice Williams,35,10002,72000,Heart Disease
+5,Charlie Brown,35,10003,73000,Asthma
+6,Diana Miller,35,10003,71000,Diabetes
+7,Eve Davis,42,10004,89000,Hypertension
+8,Frank Wilson,42,10004,91000,Hypertension
+9,Grace Moore,42,10005,88000,Diabetes
+10,Henry Taylor,50,10005,105000,Heart Disease
+11,Ivy Anderson,50,10006,107000,Heart Disease
+12,Jack Thomas,50,10006,104000,Asthma
+13,Kate Jackson,28,10007,57000,Asthma
+14,Leo White,28,10007,58000,Diabetes
+15,Mia Harris,35,10008,74000,Hypertension
+16,Noah Martin,35,10008,75000,Heart Disease
+17,Olivia Garcia,42,10009,90000,Diabetes
+18,Paul Martinez,42,10009,92000,Asthma
+19,Quinn Robinson,50,10010,106000,Hypertension
+20,Rose Clark,50,10010,108000,Heart Disease
