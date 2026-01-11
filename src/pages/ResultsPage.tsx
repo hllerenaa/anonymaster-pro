@@ -35,6 +35,8 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ selectedResultId, onNa
   const [loading, setLoading] = useState(true);
   const [showData, setShowData] = useState(false);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   useEffect(() => {
     fetchResults();

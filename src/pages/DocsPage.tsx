@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Book, Shield, Eye, Grid, Zap, Lock, AlertCircle, HelpCircle, FileText } from 'lucide-react';
+import { Book, Shield, Eye, Grid, Zap, Lock, AlertCircle, HelpCircle, FileText, Sparkles, BookOpen } from 'lucide-react';
 
 export const DocsPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState('overview');
 
   const sections = [
     { id: 'overview', label: 'Introducción', icon: Book },
+    { id: 'quick-guide', label: '⚡ Guía Rápida', icon: Sparkles },
+    { id: 'glossary', label: '📖 Glosario', icon: BookOpen },
+    { id: 'fundamentos', label: '🧠 Fundamentos', icon: Book },
     { id: 'k-anonymity', label: 'K-Anonimato', icon: Shield },
     { id: 'l-diversity', label: 'L-Diversidad', icon: Grid },
     { id: 't-closeness', label: 'T-Cercanía', icon: Zap },
@@ -105,7 +108,397 @@ export const DocsPage: React.FC = () => {
           </div>
         )}
 
-        {activeSection === 'k-anonymity' && (
+
+        {activeSection === 'quick-guide' && (
+          <div className="bg-white rounded-xl p-8 shadow-md border border-slate-200">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-slate-900">Guía Rápida de Configuración</h1>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+              <h3 className="font-bold text-yellow-900 mb-2 flex items-center space-x-2">
+                <AlertCircle className="w-5 h-5" />
+                <span>¿Por qué mis datos salen como "Range 1", "Range 2"?</span>
+              </h3>
+              <p className="text-yellow-800">
+                Estás aplicando <strong>Generalización a TODAS las columnas</strong>. Esto hace que los datos sean inútiles.
+                Sigue esta guía para configurar correctamente.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="border-l-4 border-blue-500 pl-6">
+                <h2 className="text-2xl font-bold text-slate-900 mb-4">📋 Paso a Paso</h2>
+
+                <div className="space-y-4">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h3 className="font-bold text-red-900 mb-2">1. Identifica IDENTIFICADORES</h3>
+                    <p className="text-red-800 text-sm mb-2">Columnas que identifican por sí solas</p>
+                    <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                      <li>id, nombre_completo, email</li>
+                      <li>Técnica: <strong>Supresión 100%</strong></li>
+                      <li>Resultado: * (asterisco)</li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h3 className="font-bold text-yellow-900 mb-2">2. Identifica QUASI-IDENTIFICADORES</h3>
+                    <p className="text-yellow-800 text-sm mb-2">Columnas que combinadas identifican</p>
+                    <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
+                      <li>edad, codigo_postal, genero</li>
+                      <li>Técnica: <strong>Generalización (3-5 intervalos)</strong></li>
+                      <li>Resultado: 25-30, 100XX</li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="font-bold text-blue-900 mb-2">3. Identifica SENSIBLES</h3>
+                    <p className="text-blue-800 text-sm mb-2">Información privada</p>
+                    <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
+                      <li>salario, condicion_medica</li>
+                      <li>Técnica: <strong>Dejar original o generalizar ligeramente</strong></li>
+                      <li>Proteger con: l-diversity y t-closeness</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6">
+                <h2 className="text-xl font-bold text-green-900 mb-4">✅ Parámetros Globales</h2>
+                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                  <div className="bg-white rounded p-3">
+                    <p className="font-bold text-slate-900">k = 3</p>
+                    <p className="text-slate-600">Cada grupo mínimo 3 personas</p>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <p className="font-bold text-slate-900">l = 2</p>
+                    <p className="text-slate-600">Mínimo 2 valores sensibles diferentes</p>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <p className="font-bold text-slate-900">t = 0.2</p>
+                    <p className="text-slate-600">Distribución similar a global</p>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <p className="font-bold text-slate-900">ε = 1.0</p>
+                    <p className="text-slate-600">Balance privacidad-utilidad</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-6">
+                <h2 className="text-xl font-bold text-amber-900 mb-4">🔑 3 Reglas de Oro</h2>
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3">
+                    <span className="text-2xl">1️⃣</span>
+                    <div>
+                      <p className="font-bold">SUPRIME identificadores</p>
+                      <p className="text-sm text-amber-800">id, nombre, email → siempre eliminar</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <span className="text-2xl">2️⃣</span>
+                    <div>
+                      <p className="font-bold">GENERALIZA quasi-identificadores</p>
+                      <p className="text-sm text-amber-800">edad, código postal → crear rangos</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <span className="text-2xl">3️⃣</span>
+                    <div>
+                      <p className="font-bold">PROTEGE sensibles con k/l/t</p>
+                      <p className="text-sm text-amber-800">Parámetros globales protegen estos datos</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeSection === 'glossary' && (
+          <div className="bg-white rounded-xl p-8 shadow-md border border-slate-200">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-slate-900">Glosario de Términos</h1>
+            </div>
+
+            <p className="text-slate-600 mb-6">
+              Diccionario de términos fundamentales de anonimización.
+            </p>
+
+            <div className="space-y-6">
+              <div className="border-b border-slate-200 pb-6">
+                <h2 className="text-2xl font-bold text-blue-600 mb-4">A - D</h2>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Anonimización</h3>
+                    <p className="text-slate-700">
+                      Proceso irreversible de transformar datos personales para que los individuos no puedan ser identificados.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Atributo Sensible</h3>
+                    <p className="text-slate-700 mb-2">
+                      Información confidencial que debe protegerse especialmente.
+                    </p>
+                    <div className="bg-blue-50 rounded p-3 text-sm">
+                      <strong>Ejemplos:</strong> salario, condición médica, orientación sexual
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Differential Privacy</h3>
+                    <p className="text-slate-700">
+                      Técnica que agrega ruido calibrado para proteger privacidad individual manteniendo utilidad estadística.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-b border-slate-200 pb-6">
+                <h2 className="text-2xl font-bold text-blue-600 mb-4">E - K</h2>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Epsilon (ε)</h3>
+                    <p className="text-slate-700">
+                      Parámetro de privacidad diferencial. Valores bajos = más privacidad, menos utilidad.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Generalización</h3>
+                    <p className="text-slate-700 mb-2">
+                      Reemplazar valores específicos con rangos más amplios.
+                    </p>
+                    <div className="bg-green-50 rounded p-3 text-sm">
+                      <strong>Ejemplo:</strong> 25, 27, 29 años → 25-30 años
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Identificador Directo</h3>
+                    <p className="text-slate-700">
+                      Información que identifica únicamente a una persona: nombre, email, SSN, teléfono.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">K-Anonymity</h3>
+                    <p className="text-slate-700 mb-2">
+                      Cada individuo es indistinguible de al menos k-1 otros basándose en quasi-identificadores.
+                    </p>
+                    <div className="bg-blue-50 rounded p-3 text-sm">
+                      <strong>k=3:</strong> Cada combinación aparece mínimo 3 veces
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-b border-slate-200 pb-6">
+                <h2 className="text-2xl font-bold text-blue-600 mb-4">L - S</h2>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">L-Diversity</h3>
+                    <p className="text-slate-700">
+                      Cada grupo de k registros debe tener al menos l valores diferentes en atributos sensibles.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Quasi-Identificador</h3>
+                    <p className="text-slate-700 mb-2">
+                      Atributo que combinado con otros puede llevar a re-identificación.
+                    </p>
+                    <div className="bg-yellow-50 rounded p-3 text-sm">
+                      <strong>Ejemplos:</strong> edad, código postal, género, ocupación
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Supresión</h3>
+                    <p className="text-slate-700 mb-2">
+                      Reemplazar valores con un marcador (*, null).
+                    </p>
+                    <div className="bg-orange-50 rounded p-3 text-sm">
+                      <strong>Ejemplo:</strong> "Carlos López" → "*"
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-b border-slate-200 pb-6">
+                <h2 className="text-2xl font-bold text-blue-600 mb-4">T</h2>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">T-Closeness</h3>
+                    <p className="text-slate-700">
+                      Distribución de sensibles en cada grupo debe ser similar a la distribución global.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Trade-off Privacidad-Utilidad</h3>
+                    <p className="text-slate-700">
+                      Balance inevitable: más privacidad = menos utilidad de datos para análisis.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeSection === 'fundamentos' && (
+          <div className="bg-white rounded-xl p-8 shadow-md border border-slate-200">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                <Book className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-slate-900">Fundamentos Teóricos</h1>
+            </div>
+
+            <p className="text-slate-600 mb-8 text-lg">
+              Comprende el <strong>POR QUÉ</strong> detrás de cada clasificación y parámetro.
+            </p>
+
+            <div className="space-y-8">
+              {/* Caso Real */}
+              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+                <h2 className="text-2xl font-bold text-red-900 mb-4">
+                  📰 Caso Real: Gobernador de Massachusetts (1997)
+                </h2>
+
+                <div className="space-y-4">
+                  <div className="bg-white rounded-lg p-4">
+                    <h3 className="font-bold text-slate-900 mb-2">El Incidente</h3>
+                    <p className="text-slate-700">
+                      Massachusetts publicó datos médicos "anonimizados". Una investigadora
+                      <strong> re-identificó al gobernador William Weld</strong> usando solo:
+                    </p>
+                    <ul className="list-disc list-inside mt-2 text-slate-700">
+                      <li>Fecha de nacimiento</li>
+                      <li>Género</li>
+                      <li>Código postal</li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+                    <p className="font-bold text-yellow-900">🎯 Lección:</p>
+                    <p className="text-yellow-800">
+                      La <strong>combinación</strong> de atributos aparentemente inocentes creó un perfil único.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Por qué clasificamos */}
+              <div className="border-l-4 border-blue-500 pl-6">
+                <h2 className="text-2xl font-bold text-slate-900 mb-4">
+                  ¿Por Qué Clasificamos las Columnas?
+                </h2>
+
+                <div className="bg-gradient-to-b from-red-50 via-yellow-50 to-blue-50 rounded-lg p-6 border-2 border-slate-200">
+                  <h3 className="font-bold text-center text-xl mb-4">📊 Escala de Riesgo</h3>
+
+                  <div className="space-y-3">
+                    <div className="bg-red-100 border-2 border-red-300 rounded-lg p-3">
+                      <p className="font-bold text-red-900">🔴 IDENTIFICADOR DIRECTO</p>
+                      <p className="text-sm text-red-800">Riesgo: 100% - Identifica por sí solo</p>
+                      <p className="text-sm text-red-700">Ejemplos: Nombre, Email, SSN</p>
+                    </div>
+
+                    <div className="flex justify-center"><div className="text-xl">↓</div></div>
+
+                    <div className="bg-yellow-100 border-2 border-yellow-300 rounded-lg p-3">
+                      <p className="font-bold text-yellow-900">🟡 QUASI-IDENTIFICADOR</p>
+                      <p className="text-sm text-yellow-800">Riesgo: 60-80% - Identifica cuando se combina</p>
+                      <p className="text-sm text-yellow-700">Ejemplos: Edad + Código Postal + Género</p>
+                    </div>
+
+                    <div className="flex justify-center"><div className="text-xl">↓</div></div>
+
+                    <div className="bg-blue-100 border-2 border-blue-300 rounded-lg p-3">
+                      <p className="font-bold text-blue-900">🔵 ATRIBUTO SENSIBLE</p>
+                      <p className="text-sm text-blue-800">Riesgo: 40% - Revela información privada</p>
+                      <p className="text-sm text-blue-700">Ejemplos: Salario, Condición médica</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Parámetros */}
+              <div className="border-l-4 border-orange-500 pl-6">
+                <h2 className="text-2xl font-bold text-slate-900 mb-4">
+                  ¿Por Qué Esos Parámetros?
+                </h2>
+
+                <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 mb-4">
+                  <h3 className="text-xl font-bold text-blue-900 mb-3">K-Anonymity: ¿Por qué k=3?</h3>
+
+                  <div className="bg-white rounded p-4 text-sm">
+                    <p className="text-slate-700 mb-2">
+                      <strong>k=1:</strong> Sin protección ❌
+                    </p>
+                    <p className="text-slate-700 mb-2">
+                      <strong>k=2:</strong> Vulnerable a ataques 🟡
+                    </p>
+                    <p className="text-green-700 mb-2">
+                      <strong>k=3:</strong> Balance óptimo ✅ (Reduce riesgo en 90%)
+                    </p>
+                    <p className="text-slate-700 mb-2">
+                      <strong>k=5:</strong> Alta privacidad, pierde utilidad 🟡
+                    </p>
+                    <p className="text-slate-700">
+                      <strong>k=10:</strong> Solo para datasets masivos ⚠️
+                    </p>
+                  </div>
+
+                  <p className="text-sm text-slate-600 mt-3">
+                    <strong>Investigación:</strong> Sweeney (2006) demostró que k=3 es el punto óptimo.
+                  </p>
+                </div>
+
+                <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6">
+                  <h3 className="text-xl font-bold text-green-900 mb-3">L-Diversity: ¿Por qué l=2?</h3>
+
+                  <div className="grid md:grid-cols-2 gap-4 text-sm">
+                    <div className="bg-red-100 border border-red-300 rounded p-3">
+                      <p className="font-bold text-red-900 mb-2">❌ SIN l-diversity</p>
+                      <p className="text-red-800">Grupo de 3 personas, todas con VIH</p>
+                      <p className="text-red-900 font-bold mt-2">Probabilidad: 100%</p>
+                    </div>
+
+                    <div className="bg-green-100 border border-green-300 rounded p-3">
+                      <p className="font-bold text-green-900 mb-2">✅ CON l-diversity</p>
+                      <p className="text-green-800">Grupo: VIH, Ninguna, Asma</p>
+                      <p className="text-green-900 font-bold mt-2">Probabilidad: 33%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Referencias */}
+              <div className="bg-slate-100 border-2 border-slate-300 rounded-lg p-6">
+                <h2 className="text-xl font-bold text-slate-900 mb-4">📚 Referencias Académicas</h2>
+                <div className="space-y-3 text-sm">
+                  <div className="bg-white rounded p-3">
+                    <p className="font-bold">Sweeney, L. (2002)</p>
+                    <p className="text-slate-700">"k-anonymity: A model for protecting privacy"</p>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <p className="font-bold">Machanavajjhala, A. et al. (2007)</p>
+                    <p className="text-slate-700">"l-diversity: Privacy beyond k-anonymity"</p>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <p className="font-bold">Li, N. et al. (2007)</p>
+                    <p className="text-slate-700">"t-closeness: Privacy beyond k-anonymity and l-diversity"</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+                {activeSection === 'k-anonymity' && (
           <div className="bg-white rounded-xl p-8 shadow-md border border-slate-200">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">

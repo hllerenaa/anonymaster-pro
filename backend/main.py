@@ -596,15 +596,19 @@ async def upload_dataset(
             "columns": len(df.columns)
         })
 
-        result['column_names'] = json.loads(result['column_names'])
-        result['data'] = json.loads(result['data'])
+        # result['column_names'] = json.loads(result['column_names'])
+        # result['data'] = json.loads(result['data'])
+        result['column_names'] = json.loads(result['column_names']) if isinstance(result.get('column_names'), str) else result.get('column_names', [])
+        result['data'] = json.loads(result['data']) if isinstance(result.get('data'), str) else result.get('data', [])
+
 
         logger.info(f"Dataset uploaded successfully: {result['id']}")
         return result
 
     except Exception as e:
-        logger.error(f"Error uploading dataset: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+        linea_error = e.__traceback__.tb_lineno
+        logger.error(f"Error uploading dataset: {str(e)} - Line: {linea_error}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)} - Line: {linea_error}")
 
 @app.get("/api/datasets")
 def get_datasets(user_id: str = Depends(get_current_user)):
@@ -669,9 +673,13 @@ def create_config(config: AnonymizationConfig, user_id: str = Depends(get_curren
             "name": config.name
         })
 
-        result['column_mappings'] = json.loads(result['column_mappings'])
-        result['techniques'] = json.loads(result['techniques'])
-        result['global_params'] = json.loads(result['global_params'])
+        # result['column_mappings'] = json.loads(result['column_mappings'])
+        # result['techniques'] = json.loads(result['techniques'])
+        # result['global_params'] = json.loads(result['global_params'])
+
+        result['column_mappings'] = json.loads(result['column_mappings']) if isinstance(result.get('column_mappings'), str) else result.get('column_mappings', [])
+        result['techniques'] = json.loads(result['techniques']) if isinstance(result.get('techniques'), str) else result.get('techniques', [])
+        result['global_params'] = json.loads(result['global_params']) if isinstance(result.get('global_params'), str) else result.get('global_params', {})
 
         logger.info(f"Config created successfully: {result['id']}")
         return result
@@ -706,20 +714,21 @@ def get_configs(dataset_id: Optional[str] = None, user_id: str = Depends(get_cur
         logger.error(f"Error fetching configs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# --------------------------------------------------
+# MÉTRICAS
+# --------------------------------------------------
 def calculate_k_anonymity(df: pd.DataFrame, quasi_identifiers: List[str]) -> int:
     if not quasi_identifiers:
         return len(df)
-
-    group_sizes = df.groupby(quasi_identifiers).size()
-    return int(group_sizes.min()) if len(group_sizes) > 0 else 0
+    groups = df.groupby(quasi_identifiers).size()
+    return int(groups.min()) if len(groups) > 0 else 0
 
 def calculate_l_diversity(df: pd.DataFrame, quasi_identifiers: List[str], sensitive_attr: str) -> float:
     if not quasi_identifiers or not sensitive_attr:
         return 0.0
-
     groups = df.groupby(quasi_identifiers)[sensitive_attr]
-    diversities = groups.apply(lambda x: len(x.unique()))
-    return float(diversities.min()) if len(diversities) > 0 else 0.0
+    return float(groups.apply(lambda x: len(x.unique())).min())
 
 def calculate_information_loss(original_df: pd.DataFrame, anonymized_df: pd.DataFrame, columns: List[str]) -> float:
     total_loss = 0.0
@@ -728,12 +737,21 @@ def calculate_information_loss(original_df: pd.DataFrame, anonymized_df: pd.Data
             continue
 
         if pd.api.types.is_numeric_dtype(original_df[col]):
-            orig_range = original_df[col].max() - original_df[col].min()
-            if orig_range == 0:
-                continue
-            anon_range = anonymized_df[col].max() - anonymized_df[col].min()
-            loss = 1 - (anon_range / orig_range)
-            total_loss += loss
+            try:
+                orig_range = original_df[col].max() - original_df[col].min()
+                if orig_range == 0:
+                    continue
+                anon_range = anonymized_df[col].max() - anonymized_df[col].min()
+                loss = 1 - (anon_range / orig_range)
+                total_loss += loss
+            except (TypeError, ValueError):
+                # If anonymized column became non-numeric (e.g., generalization to ranges)
+                # Calculate loss based on unique values instead
+                orig_unique = len(original_df[col].unique())
+                anon_unique = len(anonymized_df[col].unique())
+                if orig_unique > 0:
+                    loss = 1 - (anon_unique / orig_unique)
+                    total_loss += loss
         else:
             orig_unique = len(original_df[col].unique())
             anon_unique = len(anonymized_df[col].unique())
@@ -743,42 +761,45 @@ def calculate_information_loss(original_df: pd.DataFrame, anonymized_df: pd.Data
 
     return (total_loss / len(columns)) * 100 if columns else 0.0
 
+# --------------------------------------------------
+# FUNCIONES DE APOYO
+# --------------------------------------------------
 def generalize_numeric(series: pd.Series, bins: int = 5) -> pd.Series:
     try:
-        labels = [f"Range {i+1}" for i in range(bins)]
+        labels = [f"Rango {i+1}" for i in range(bins)]
         return pd.cut(series, bins=bins, labels=labels, duplicates='drop')
-    except:
+    except Exception:
         return series.astype(str)
 
 def generalize_categorical(series: pd.Series, levels: int = 1) -> pd.Series:
-    value_counts = series.value_counts()
     if levels == 1:
-        return pd.Series(['Generalized'] * len(series), index=series.index)
-    else:
-        top_values = value_counts.head(levels).index.tolist()
-        return series.apply(lambda x: x if x in top_values else 'Other')
+        return pd.Series(['Generalizado'] * len(series), index=series.index)
+    counts = series.value_counts()
+    top = counts.head(levels).index.tolist()
+    return series.apply(lambda x: x if x in top else 'Otros')
 
 def suppress_data(series: pd.Series, threshold: float = 0.1) -> pd.Series:
-    num_to_suppress = int(len(series) * threshold)
-    if num_to_suppress == 0:
-        return series
-
-    suppressed = series.copy()
-    indices_to_suppress = np.random.choice(series.index, size=num_to_suppress, replace=False)
-    suppressed.loc[indices_to_suppress] = '*'
-    return suppressed
+    result = series.copy()
+    n = int(len(series) * threshold)
+    if n > 0:
+        idx = np.random.choice(series.index, size=n, replace=False)
+        result.loc[idx] = '*'
+    return result
 
 def apply_differential_privacy(series: pd.Series, epsilon: float = 1.0) -> pd.Series:
-    if pd.api.types.is_numeric_dtype(series):
-        sensitivity = series.max() - series.min()
-        if sensitivity == 0:
-            return series
-        scale = sensitivity / epsilon
-        noise = np.random.laplace(0, scale, size=len(series))
-        return series + noise
-    return series
+    if not pd.api.types.is_numeric_dtype(series):
+        return series
+    sensitivity = series.max() - series.min()
+    if sensitivity == 0:
+        return series
+    scale = sensitivity / epsilon
+    noise = np.random.laplace(0, scale, size=len(series))
+    return series + noise
 
-def apply_k_anonymity_algorithm(df: pd.DataFrame, quasi_identifiers: List[str], k: int, technique_details: Dict) -> pd.DataFrame:
+# --------------------------------------------------
+# K-ANONIMATO
+# --------------------------------------------------
+def apply_k_anonymity_algorithm(df, quasi_identifiers, k, technique_details):
     result_df = df.copy()
     changes = []
 
@@ -786,173 +807,197 @@ def apply_k_anonymity_algorithm(df: pd.DataFrame, quasi_identifiers: List[str], 
         if col not in result_df.columns:
             continue
 
-        original_unique = len(result_df[col].unique())
+        original_unique = result_df[col].nunique()
 
         if pd.api.types.is_numeric_dtype(result_df[col]):
             result_df[col] = generalize_numeric(result_df[col], bins=max(2, k))
-            changes.append(f"Generalized numeric column '{col}' into {max(2, k)} ranges")
+            changes.append(f"Se generalizó la columna numérica '{col}' en rangos")
         else:
             result_df[col] = generalize_categorical(result_df[col], levels=2)
-            changes.append(f"Generalized categorical column '{col}' to broader categories")
+            changes.append(f"Se generalizó la columna categórica '{col}'")
 
-        new_unique = len(result_df[col].unique())
-        changes.append(f"  → Reduced unique values from {original_unique} to {new_unique}")
+        new_unique = result_df[col].nunique()
+        changes.append(f"→ Se redujeron los valores únicos de {original_unique} a {new_unique}")
 
     achieved_k = calculate_k_anonymity(result_df, quasi_identifiers)
+
     technique_details["k_anonymity"] = {
-        "technique": "K-Anonymity",
+        "technique": "K-Anonimato",
         "target_k": k,
         "achieved_k": achieved_k,
         "quasi_identifiers": quasi_identifiers,
         "changes": changes,
-        "explanation": f"Applied generalization to ensure each combination of quasi-identifiers appears at least {k} times. Achieved k={achieved_k}."
+        "explanation": (
+            "Se agruparon los registros para que cada fila del conjunto de datos "
+            f"no pueda diferenciarse de al menos {k - 1} registros adicionales. "
+            f"K objetivo: {k}. K logrado: {achieved_k}."
+        )
     }
-
     return result_df
 
-def apply_l_diversity_algorithm(df: pd.DataFrame, quasi_identifiers: List[str], sensitive_col: str, l: int, technique_details: Dict) -> pd.DataFrame:
+# --------------------------------------------------
+# L-DIVERSIDAD
+# --------------------------------------------------
+def apply_l_diversity_algorithm(df, quasi_identifiers, sensitive_col, l, technique_details):
     result_df = df.copy()
     changes = []
 
-    if sensitive_col not in result_df.columns:
-        technique_details["l_diversity"] = {
-            "technique": "L-Diversity",
-            "error": f"Sensitive column '{sensitive_col}' not found",
-            "changes": []
-        }
-        return result_df
-
-    groups = result_df.groupby(quasi_identifiers)
-    original_diversity = calculate_l_diversity(result_df, quasi_identifiers, sensitive_col)
-
-    for name, group in groups:
-        diversity = len(group[sensitive_col].unique())
+    for _, group in result_df.groupby(quasi_identifiers):
+        diversity = group[sensitive_col].nunique()
         if diversity < l:
-            changes.append(f"Group with {diversity} distinct sensitive values (< {l}) detected")
+            changes.append(
+                f"Se detectó un grupo con {diversity} valores sensibles distintos "
+                f"(menor al mínimo esperado de {l})"
+            )
 
     achieved_l = calculate_l_diversity(result_df, quasi_identifiers, sensitive_col)
+
     technique_details["l_diversity"] = {
-        "technique": "L-Diversity",
+        "technique": "L-Diversidad",
         "target_l": l,
         "achieved_l": achieved_l,
         "sensitive_attribute": sensitive_col,
         "quasi_identifiers": quasi_identifiers,
         "changes": changes,
-        "explanation": f"Verified that each group has at least {l} distinct sensitive values. Achieved l={achieved_l}."
+        "explanation": (
+            "Se validó que cada grupo de registros tenga suficientes valores distintos "
+            "en la información sensible, reduciendo el riesgo de inferencia directa. "
+            f"L objetivo: {l}. L logrado: {achieved_l}."
+        )
     }
-
     return result_df
 
-def apply_techniques(df: pd.DataFrame, config: Dict, technique_details: Dict) -> pd.DataFrame:
+# --------------------------------------------------
+# APLICACIÓN DE TÉCNICAS
+# --------------------------------------------------
+def apply_techniques(df, config, technique_details):
     result_df = df.copy()
 
-    column_mappings = config["column_mappings"]
-    if isinstance(column_mappings, str):
-        column_mappings = json.loads(column_mappings)
+    # column_mappings = json.loads(config["column_mappings"])
+    # techniques = json.loads(config["techniques"])
+    # global_params = json.loads(config["global_params"])
 
-    techniques_list = config["techniques"]
-    if isinstance(techniques_list, str):
-        techniques_list = json.loads(techniques_list)
+    column_mappings = (
+        json.loads(config["column_mappings"])
+        if isinstance(config.get("column_mappings"), str)
+        else config.get("column_mappings", [])
+    )
 
-    global_params = config["global_params"]
-    if isinstance(global_params, str):
-        global_params = json.loads(global_params)
+    techniques = (
+        json.loads(config["techniques"])
+        if isinstance(config.get("techniques"), str)
+        else config.get("techniques", [])
+    )
+
+    global_params = (
+        json.loads(config["global_params"])
+        if isinstance(config.get("global_params"), str)
+        else config.get("global_params", {})
+    )
 
     quasi_identifiers = [m["column"] for m in column_mappings if m["type"] == "quasi-identifier"]
     sensitive_columns = [m["column"] for m in column_mappings if m["type"] == "sensitive"]
     identifiers = [m["column"] for m in column_mappings if m["type"] == "identifier"]
 
-    if identifiers:
-        for col in identifiers:
-            if col in result_df.columns:
-                result_df = result_df.drop(columns=[col])
-                technique_details["suppression_identifiers"] = {
-                    "technique": "Identifier Suppression",
-                    "changes": [f"Removed identifier column '{col}' completely"],
-                    "explanation": "Direct identifiers (like ID, email, SSN) were completely removed to prevent re-identification."
-                }
+    # Eliminar identificadores directos
+    for col in identifiers:
+        if col in result_df.columns:
+            result_df.drop(columns=[col], inplace=True)
+            technique_details[f"identifier_{col}"] = {
+                "technique": "Supresión de Identificadores",
+                "changes": [f"Se eliminó completamente la columna '{col}'"],
+                "explanation": (
+                    "Los identificadores directos permiten reconocer a una persona "
+                    "sin esfuerzo, por lo que se eliminan completamente."
+                )
+            }
 
-    for tech in techniques_list:
+    for tech in techniques:
         col = tech["column"]
-        technique = tech["technique"]
-        params = tech.get("params", {})
-
         if col not in result_df.columns:
             continue
 
-        original_sample = result_df[col].head(5).tolist()
+        params = tech.get("params", {})
+        sample_before = result_df[col].iloc[0]
 
-        if technique == "generalization":
+        if tech["technique"] == "generalization":
             if pd.api.types.is_numeric_dtype(result_df[col]):
                 bins = params.get("bins", 5)
-                result_df[col] = generalize_numeric(result_df[col], bins=bins)
-                technique_details[f"generalization_{col}"] = {
-                    "technique": "Generalization (Numeric)",
-                    "column": col,
-                    "params": {"bins": bins},
-                    "changes": [
-                        f"Converted numeric values into {bins} ranges",
-                        f"Example: {original_sample[0]} → {result_df[col].iloc[0]}"
-                    ],
-                    "explanation": f"Replaced precise numeric values with ranges to reduce precision and protect privacy."
-                }
+                result_df[col] = generalize_numeric(result_df[col], bins)
+                explanation = (
+                    "Los valores numéricos exactos fueron reemplazados por rangos "
+                    "para disminuir el nivel de detalle del dato."
+                )
             else:
                 levels = params.get("levels", 1)
-                result_df[col] = generalize_categorical(result_df[col], levels=levels)
-                technique_details[f"generalization_{col}"] = {
-                    "technique": "Generalization (Categorical)",
-                    "column": col,
-                    "params": {"levels": levels},
-                    "changes": [
-                        f"Grouped categorical values into broader categories",
-                        f"Example: {original_sample[0]} → {result_df[col].iloc[0]}"
-                    ],
-                    "explanation": f"Replaced specific categories with more general ones to reduce uniqueness."
-                }
+                result_df[col] = generalize_categorical(result_df[col], levels)
+                explanation = (
+                    "Los valores específicos fueron agrupados en categorías "
+                    "más generales para evitar valores únicos."
+                )
 
-        elif technique == "suppression":
-            threshold = params.get("threshold", 0.1)
-            result_df[col] = suppress_data(result_df[col], threshold=threshold)
-            suppressed_count = (result_df[col] == '*').sum()
-            technique_details[f"suppression_{col}"] = {
-                "technique": "Suppression",
+            technique_details[f"generalization_{col}"] = {
+                "technique": "Generalización",
                 "column": col,
-                "params": {"threshold": threshold},
-                "changes": [
-                    f"Replaced {suppressed_count} values ({threshold*100}%) with '*'",
-                    f"Example: Some values like '{original_sample[0]}' → '*'"
-                ],
-                "explanation": f"Randomly masked {threshold*100}% of values to hide specific entries."
+                "params": params,
+                "changes": [f"Ejemplo: {sample_before} → {result_df[col].iloc[0]}"],
+                "explanation": explanation
             }
 
-        elif technique == "differential_privacy":
-            epsilon = params.get("epsilon", 1.0)
-            if pd.api.types.is_numeric_dtype(result_df[col]):
-                noisy_series = apply_differential_privacy(result_df[col], epsilon=epsilon)
-                avg_noise = abs(noisy_series - result_df[col]).mean()
-                result_df[col] = noisy_series
-                technique_details[f"differential_privacy_{col}"] = {
-                    "technique": "Differential Privacy",
-                    "column": col,
-                    "params": {"epsilon": epsilon},
-                    "changes": [
-                        f"Added random noise to numeric values",
-                        f"Average noise magnitude: {avg_noise:.2f}",
-                        f"Example: {original_sample[0]} → {result_df[col].iloc[0]:.2f}"
-                    ],
-                    "explanation": f"Added calibrated random noise (epsilon={epsilon}) to protect individual values while preserving statistical properties."
-                }
+        elif tech["technique"] == "suppression":
+            threshold = params.get("threshold", 0.1)
+            result_df[col] = suppress_data(result_df[col], threshold)
+            suppressed_count = (result_df[col] == '*').sum()
+            technique_details[f"suppression_{col}"] = {
+                "technique": "Supresión",
+                "column": col,
+                "params": params,
+                "changes": [
+                    f"Se ocultaron {suppressed_count} valores ({threshold*100}%) usando '*'"
+                ],
+                "explanation": (
+                    "Una parte de los datos fue ocultada aleatoriamente "
+                    "para reducir la posibilidad de identificación directa."
+                )
+            }
 
+        elif tech["technique"] == "differential_privacy":
+            epsilon = params.get("epsilon", 1.0)
+            result_df[col] = apply_differential_privacy(result_df[col], epsilon)
+            technique_details[f"differential_privacy_{col}"] = {
+                "technique": "Privacidad Diferencial",
+                "column": col,
+                "params": params,
+                "changes": [f"Ejemplo: {sample_before} → {result_df[col].iloc[0]}"],
+                "explanation": (
+                    f"Se añadió ruido aleatorio controlado (epsilon={epsilon}) "
+                    "para proteger la información individual."
+                )
+            }
+
+    # Aplicar métricas globales
     k = global_params.get("k", 2)
     if quasi_identifiers and k > 1:
         result_df = apply_k_anonymity_algorithm(result_df, quasi_identifiers, k, technique_details)
 
     l = global_params.get("l", 2)
     if quasi_identifiers and sensitive_columns and l > 1:
-        for sensitive_col in sensitive_columns:
-            result_df = apply_l_diversity_algorithm(result_df, quasi_identifiers, sensitive_col, l, technique_details)
+        result_df = apply_l_diversity_algorithm(
+            result_df, quasi_identifiers, sensitive_columns[0], l, technique_details
+        )
 
+    if not technique_details:
+        technique_details["no_changes"] = {
+            "technique": "Sin Transformaciones",
+            "explanation": (
+                "No se aplicaron técnicas de anonimización adicionales porque la "
+                "configuración no requería generalización, supresión o ajustes globales. "
+                "Los datos ya cumplían las condiciones mínimas definidas."
+            ),
+            "changes": []
+        }
     return result_df
+
 
 @app.post("/api/process")
 async def process_anonymization(request: ProcessRequest, user_id: str = Depends(get_current_user)):
@@ -1023,9 +1068,13 @@ async def process_anonymization(request: ProcessRequest, user_id: str = Depends(
             "processing_time_ms": processing_time
         })
 
-        result['anonymized_data'] = json.loads(result['anonymized_data'])
-        result['metrics'] = json.loads(result['metrics'])
-        result['technique_details'] = json.loads(result['technique_details'])
+        # result['anonymized_data'] = json.loads(result['anonymized_data'])
+        # result['metrics'] = json.loads(result['metrics'])
+        # result['technique_details'] = json.loads(result['technique_details'])
+
+        result['anonymized_data'] = json.loads(result['anonymized_data']) if isinstance(result.get('anonymized_data'), str) else result.get('anonymized_data', [])
+        result['metrics'] = json.loads(result['metrics']) if isinstance(result.get('metrics'), str) else result.get('metrics', {})
+        result['technique_details'] = json.loads(result['technique_details']) if isinstance(result.get('technique_details'), str) else result.get('technique_details', {})
 
         logger.info(f"Processing completed in {processing_time}ms, result: {result['id']}")
         return result
