@@ -75,7 +75,102 @@ def read_root():
     return {
         "message": "Data Anonymization System API",
         "version": "1.0.0",
-        "database": "PostgreSQL"
+        "database": "PostgreSQL",
+        "status": "online",
+        "documentation": {
+            "description": "API para anonimización de datos con técnicas avanzadas de privacidad",
+            "endpoints": [
+                {
+                    "method": "GET",
+                    "path": "/",
+                    "description": "Información general de la API y lista de endpoints disponibles"
+                },
+                {
+                    "method": "POST",
+                    "path": "/api/datasets/upload",
+                    "description": "Subir un nuevo dataset (CSV o Excel)",
+                    "accepts": "multipart/form-data",
+                    "params": ["file (CSV o XLSX, máx 50MB)"]
+                },
+                {
+                    "method": "GET",
+                    "path": "/api/datasets",
+                    "description": "Listar todos los datasets subidos por el usuario",
+                    "returns": "Array de datasets con metadata (nombre, filas, columnas, fecha)"
+                },
+                {
+                    "method": "GET",
+                    "path": "/api/datasets/{dataset_id}",
+                    "description": "Obtener información detallada de un dataset específico",
+                    "params": ["dataset_id (UUID)"],
+                    "returns": "Dataset completo con schema y primeras filas"
+                },
+                {
+                    "method": "POST",
+                    "path": "/api/configs",
+                    "description": "Crear una nueva configuración de anonimización",
+                    "accepts": "application/json",
+                    "params": ["dataset_id", "name", "column_mappings", "techniques", "global_params"],
+                    "techniques": [
+                        "generalization - Generalizar valores (rangos, categorías)",
+                        "suppression - Suprimir valores sensibles",
+                        "pseudonymization - Reemplazar con pseudónimos",
+                        "noise_addition - Agregar ruido aleatorio (privacidad diferencial)",
+                        "masking - Enmascarar datos parcialmente"
+                    ]
+                },
+                {
+                    "method": "GET",
+                    "path": "/api/configs",
+                    "description": "Listar todas las configuraciones de anonimización",
+                    "query_params": ["dataset_id (opcional)"],
+                    "returns": "Array de configuraciones guardadas"
+                },
+                {
+                    "method": "POST",
+                    "path": "/api/process",
+                    "description": "Procesar la anonimización de un dataset con una configuración",
+                    "accepts": "application/json",
+                    "params": ["dataset_id (UUID)", "config_id (UUID)"],
+                    "returns": "Resultado de la anonimización con métricas de privacidad"
+                },
+                {
+                    "method": "GET",
+                    "path": "/api/results",
+                    "description": "Listar todos los resultados de anonimización procesados",
+                    "returns": "Array de resultados con métricas (K-anonimato, L-diversidad, etc.)"
+                },
+                {
+                    "method": "GET",
+                    "path": "/api/results/{result_id}",
+                    "description": "Obtener un resultado específico con los datos anonimizados",
+                    "params": ["result_id (UUID)"],
+                    "returns": "Dataset anonimizado completo y métricas detalladas"
+                },
+                {
+                    "method": "GET",
+                    "path": "/api/stats",
+                    "description": "Obtener estadísticas generales del sistema",
+                    "returns": "Total de datasets, configuraciones, resultados y métricas agregadas"
+                }
+            ],
+            "metrics": {
+                "k_anonymity": "Garantiza que cada registro es indistinguible de al menos K-1 registros",
+                "l_diversity": "Garantiza al menos L valores diferentes en atributos sensibles por grupo",
+                "information_loss": "Porcentaje de información perdida durante la anonimización"
+            },
+            "privacy_models": [
+                "K-Anonymity - Indistinguibilidad en grupos de K registros",
+                "L-Diversity - Diversidad en atributos sensibles",
+                "Differential Privacy - Privacidad con garantías matemáticas"
+            ]
+        },
+        "support": {
+            "formats": ["CSV", "Excel (.xlsx, .xls)"],
+            "max_upload_size": "50 MB",
+            "cors": "Habilitado para todos los orígenes",
+            "authentication": "Deshabilitada (modo público)"
+        }
     }
 
 @app.post("/api/datasets/upload")
