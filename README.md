@@ -1,379 +1,452 @@
-# Sistema de Anonimización de Datos
+# 🔒 Sistema de Anonimización de Datos
 
-Un sistema completo de acceso público para anonimizar datos sensibles usando técnicas avanzadas de preservación de privacidad incluyendo K-Anonimato, L-Diversidad, T-Cercanía y Privacidad Diferencial.
-
-## 🚀 INICIO RÁPIDO - LEE ESTO PRIMERO
-
-### **IMPORTANTE: Esta aplicación tiene DOS componentes que deben ejecutarse**
-
-1. **Backend (Python)** - Procesa la anonimización de datos 🔴 **REQUERIDO**
-2. **Frontend (React)** - Interfaz de usuario (se inicia automáticamente)
+Sistema completo para anonimizar datasets sensibles aplicando técnicas de privacidad como K-Anonimato, L-Diversidad y Privacidad Diferencial.
 
 ---
 
-## 📋 Cómo Iniciar la Aplicación
+## ✨ Características
 
-### PASO 1: Iniciar el Backend (OBLIGATORIO)
+- 📊 **Subida de Datasets**: Soporte para CSV, Excel (.xlsx, .xls)
+- 🔐 **Múltiples Técnicas**: K-Anonimato, L-Diversidad, Privacidad Diferencial
+- 🎯 **Configuración Flexible**: Clasifica columnas por tipo de sensibilidad
+- 📈 **Métricas de Privacidad**: Calcula pérdida de información y garantías de privacidad
+- 💾 **Persistencia**: Guarda datasets, configuraciones y resultados
+- 📥 **Exportación**: Descarga datos anonimizados
+- 📝 **Auditoría**: Registro completo de todas las operaciones
 
-El backend **DEBE** estar corriendo para que la aplicación funcione.
+---
 
-#### ✨ Método Rápido (Recomendado)
+## 🏗️ Arquitectura
 
-**En Windows:**
+### Frontend
+- **Framework**: React 18 + TypeScript
+- **Estilos**: Tailwind CSS
+- **Iconos**: Lucide React
+- **Build**: Vite
+
+### Backend
+- **Framework**: FastAPI (Python)
+- **Procesamiento**: Pandas + NumPy
+- **Base de Datos**: PostgreSQL local
+- **Servidor**: Uvicorn
+
+### Base de Datos
+- **Sistema**: PostgreSQL 15+
+- **Conexión**: psycopg2
+- **Pool**: SimpleConnectionPool
+- **Configuración**: credentials.json
+
+---
+
+## 📋 Requisitos Previos
+
+- Node.js 18+ y npm
+- Python 3.8+
+- PostgreSQL 12+
+
+---
+
+## 🚀 Instalación Rápida
+
+### 1. Clonar Repositorio
+
 ```bash
-cd backend
-start.bat
+git clone <repository-url>
+cd data-anonymization-system
 ```
 
-**En macOS/Linux:**
+### 2. Instalar PostgreSQL
+
+**Ubuntu/Debian:**
 ```bash
-cd backend
-chmod +x start.sh
-./start.sh
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
 ```
 
-#### 🛠️ Método Manual
+**Windows:**
+Descargar desde: https://www.postgresql.org/download/windows/
 
+**macOS:**
 ```bash
-# 1. Navegar a la carpeta backend
-cd backend
-
-# 2. Crear entorno virtual (solo primera vez)
-python -m venv venv
-
-# 3. Activar entorno virtual
-# En Windows:
-venv\Scripts\activate
-# En macOS/Linux:
-source venv/bin/activate
-
-# 4. Instalar dependencias (solo primera vez)
-pip install -r requirements.txt
-
-# 5. Iniciar servidor
-python main.py
+brew install postgresql
+brew services start postgresql
 ```
 
-### PASO 2: Verificar que el Backend Funciona
+Ver guía completa: [POSTGRESQL_SETUP.md](POSTGRESQL_SETUP.md)
 
-Abre tu navegador y visita: **http://localhost:8000**
+### 3. Crear Base de Datos
 
-Deberías ver:
+```bash
+# Conectar a PostgreSQL
+sudo -u postgres psql
+
+# Crear base de datos
+CREATE DATABASE data_anonymization;
+\q
+
+# Crear tablas
+psql -U postgres -d data_anonymization -f database/create_database.sql
+```
+
+### 4. Configurar Credenciales
+
+```bash
+# Copiar template
+cp credentials.example.json credentials.json
+
+# Editar con tus credenciales
+nano credentials.json
+```
+
+Configurar:
 ```json
 {
-  "message": "Data Anonymization System API",
-  "version": "1.0.0"
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "user": "postgres",
+    "password": "tu_contraseña",
+    "database": "data_anonymization"
+  }
 }
 ```
 
-✅ Si ves este mensaje, el backend está funcionando correctamente.
+Ver guía completa: [CREDENTIALS_SETUP.md](CREDENTIALS_SETUP.md)
 
-### PASO 3: Usar la Aplicación
+### 5. Instalar Dependencias
 
-El frontend ya está corriendo automáticamente. Si no, ejecuta:
-
+**Frontend:**
 ```bash
-npm run dev
-```
-
-Abre tu navegador en la URL que muestre (usualmente http://localhost:5173)
-
----
-
-## 🆘 Solución de Problemas
-
-### ❌ Error: "No se puede conectar al servidor"
-
-**Causa:** El backend no está corriendo.
-
-**Solución:**
-1. Abre una terminal
-2. Ve a la carpeta `backend`
-3. Ejecuta `start.bat` (Windows) o `./start.sh` (Mac/Linux)
-4. Espera a que veas "Application startup complete"
-5. Recarga la página del frontend
-
-### ❌ Error: "ModuleNotFoundError: No module named 'fastapi'"
-
-**Causa:** Las dependencias de Python no están instaladas.
-
-**Solución:**
-```bash
-cd backend
-pip install -r requirements.txt
-```
-
-### ❌ Error: "Address already in use"
-
-**Causa:** Ya hay algo usando el puerto 8000.
-
-**Solución:**
-1. Cierra cualquier otra aplicación en el puerto 8000
-2. O mata el proceso: `lsof -ti:8000 | xargs kill -9` (Mac/Linux) o usa el Administrador de Tareas (Windows)
-
----
-
-## 📖 Documentación Adicional
-
-- [START_BACKEND.md](START_BACKEND.md) - Guía detallada de inicio
-- [backend/README.md](backend/README.md) - Documentación del backend API
-
----
-
-## Features
-
-- **Multiple Anonymization Techniques**
-  - K-Anonymity: Ensure records are indistinguishable from k-1 others
-  - L-Diversity: Maintain diversity in sensitive attributes
-  - T-Closeness: Preserve distribution of sensitive attributes
-  - Differential Privacy: Add calibrated noise for mathematical privacy guarantees
-  - Generalization: Convert specific values to broader categories
-  - Suppression: Hide or remove sensitive information
-
-- **User-Friendly Interface**
-  - Drag & drop file upload
-  - Interactive 3-step configuration wizard
-  - Real-time data preview
-  - Detailed results with visual metrics
-  - Comprehensive documentation
-  - **No login required - fully public access**
-
-- **Data Management**
-  - Secure database storage with Supabase
-  - LocalStorage for configuration persistence
-  - Public shared data access
-  - Audit logging for all operations
-
-- **Analytics & Insights**
-  - Detailed technique explanations
-  - Information loss metrics
-  - Before/after comparisons
-  - Downloadable anonymized datasets
-
-## Tech Stack
-
-### Frontend
-- React 18 with TypeScript
-- Tailwind CSS for styling
-- Supabase for authentication and database
-- Lucide React for icons
-
-### Backend
-- FastAPI (Python)
-- Pandas for data processing
-- NumPy for numerical operations
-- Scikit-learn for algorithms
-
-### Database
-- Supabase (PostgreSQL)
-- Row Level Security enabled
-- JSONB for flexible data storage
-
-## Installation
-
-### Prerequisites
-- Node.js 18+ and npm
-- Python 3.9+
-- Supabase account
-
-### 1. Clone and Setup Frontend
-
-```bash
-# Install dependencies
 npm install
-
-# Create .env file with your Supabase credentials
-# (Already configured if using this template)
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### 2. Setup Backend
-
+**Backend:**
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Linux/Mac
+# o
+venv\Scripts\activate     # Windows
 
-# Install dependencies
 pip install -r requirements.txt
+```
 
-# Create .env file
-cp ../.env .env
+### 6. Iniciar Aplicación
 
-# Run the API server
+**Terminal 1 - Backend:**
+```bash
+cd backend
 python main.py
 ```
 
-The API will run on `http://localhost:8000`
-
-### 3. Run Frontend
-
+**Terminal 2 - Frontend:**
 ```bash
-# In the project root
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+Abrir navegador en: http://localhost:5173
 
-## Usage Guide
+---
 
-### Step 1: Upload Dataset
-- Navigate to "Upload Data"
-- Drag and drop an Excel (.xlsx, .xls) or CSV file
-- Maximum file size: 50MB
-- Preview your data before proceeding
+## 📖 Documentación Completa
 
-### Step 2: Configure Anonymization
+### Guías de Configuración
+- 📘 [POSTGRESQL_SETUP.md](POSTGRESQL_SETUP.md) - Instalación y configuración de PostgreSQL
+- 🔑 [CREDENTIALS_SETUP.md](CREDENTIALS_SETUP.md) - Configuración del archivo credentials.json
+- 🗄️ [database/README.md](database/README.md) - Gestión de la base de datos
 
-#### Column Mapping
-Classify each column:
-- **Identifier**: Direct identifiers (ID, email, SSN) - will be removed
-- **Quasi-Identifier**: Can identify when combined (age, zip code)
-- **Sensitive**: Private information (salary, medical condition)
-- **Non-Sensitive**: Public information
+### Guías de Estructura
+- 📂 [FOLDERS.md](FOLDERS.md) - Explicación de cada carpeta del proyecto
+- 📋 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) - Estructura detallada de archivos
 
-#### Select Techniques
-Choose anonymization method for each column:
-- **Generalization**: Convert exact values to ranges
-- **Suppression**: Hide or mask values
-- **Differential Privacy**: Add random noise
-- **None**: Keep original values
+### Guías de Deployment
+- 🐧 [DEPLOY_UBUNTU.md](DEPLOY_UBUNTU.md) - Deploy en Ubuntu Server
+- 🚀 [START_BACKEND.md](START_BACKEND.md) - Iniciar backend
 
-#### Set Parameters
-- **K Value**: Minimum group size (recommended: 5-10)
-- **L Value**: Minimum diversity in sensitive attributes (recommended: 3-5)
-- **T Value**: Distribution distance threshold (0.1-1.0)
-- **Epsilon**: Privacy budget for differential privacy (0.1-10)
+---
 
-### Step 3: Process & Review Results
-- Click "Process & View Results"
-- Review detailed metrics:
-  - K-Anonymity level achieved
-  - L-Diversity score
-  - Information loss percentage
-  - Processing time
-- See exactly what each technique did
-- Download anonymized dataset
+## 🎯 Uso
 
-## Sample Dataset
+### 1. Subir Dataset
 
-A sample dataset is provided in `backend/sample_dataset.csv` with:
-- 20 records
-- 6 columns (id, name, age, zipcode, salary, medical_condition)
-- Mix of identifiers, quasi-identifiers, and sensitive attributes
+1. Click en "Upload Dataset"
+2. Seleccionar archivo CSV o Excel
+3. Ver previsualización de datos
 
-## API Endpoints
+### 2. Configurar Anonimización
 
-- `POST /api/datasets/upload` - Upload dataset
-- `GET /api/datasets` - List all datasets
-- `GET /api/datasets/{id}` - Get specific dataset
-- `POST /api/configs` - Create configuration
-- `GET /api/configs` - List configurations
-- `POST /api/process` - Process anonymization
-- `GET /api/results` - List results
-- `GET /api/results/{id}` - Get specific result
-- `GET /api/stats` - Get user statistics
+1. Seleccionar dataset
+2. Click en "Configure"
+3. Clasificar cada columna:
+   - **Identifier**: Datos únicos (ID, email, SSN) → Se eliminan
+   - **Quasi-identifier**: Datos que combinados pueden identificar (edad, código postal) → Se generalizan
+   - **Sensitive**: Datos sensibles (salario, enfermedad) → Se protegen con L-Diversidad
+   - **Non-sensitive**: Datos no sensibles → No se modifican
 
-API documentation available at `http://localhost:8000/docs`
+4. Seleccionar técnicas:
+   - **Generalization**: Agrupar valores en rangos/categorías
+   - **Suppression**: Ocultar valores aleatoriamente
+   - **Differential Privacy**: Agregar ruido estadístico
 
-## Architecture
+5. Configurar parámetros:
+   - **K**: Cada grupo debe tener mínimo K registros
+   - **L**: Cada grupo debe tener mínimo L valores sensibles distintos
+   - **Epsilon**: Cantidad de ruido (menor = más privacidad)
 
-### Data Flow
-1. User uploads Excel/CSV file
-2. File is validated and stored in Supabase
-3. User configures anonymization parameters
-4. Configuration is saved (database + localStorage)
-5. Backend processes data with selected techniques
-6. Results are stored with detailed metrics
-7. User reviews results and downloads anonymized data
+### 3. Procesar Dataset
 
-### Database Schema
-- `datasets` - Uploaded data files
-- `anonymization_configs` - User configurations
-- `anonymization_results` - Processed results
-- `audit_logs` - Operation logs
+1. Click en "Process"
+2. Ver progreso de procesamiento
+3. Revisar métricas de privacidad
 
-### Security Features
-- Public access policies for ease of use
-- Encrypted data at rest and in transit
-- Shared data storage
-- Audit logging
-- LocalStorage for configuration persistence
+### 4. Ver Resultados
 
-## Privacy Techniques Explained
+1. Comparar datos originales vs anonimizados
+2. Revisar métricas:
+   - K-Anonimato alcanzado
+   - L-Diversidad alcanzada
+   - Pérdida de información (%)
+3. Descargar datos anonimizados
 
-### K-Anonymity
-Ensures each record is identical to at least k-1 others based on quasi-identifiers.
+---
 
-### L-Diversity
-Ensures each group has at least L distinct values for sensitive attributes.
+## 🗄️ Estructura de Base de Datos
 
-### T-Closeness
-Maintains that the distribution of sensitive attributes in each group is close to the overall distribution.
+### Tablas
 
-### Differential Privacy
-Adds calibrated random noise to provide mathematical privacy guarantees.
+**datasets**
+- Almacena datasets subidos
+- Campos: id, name, data, row_count, column_count, etc.
 
-### Generalization
-Replaces specific values with broader categories (e.g., age 28 → "25-30").
+**anonymization_configs**
+- Configuraciones de anonimización
+- Campos: id, dataset_id, column_mappings, techniques, parameters
 
-### Suppression
-Hides or removes sensitive information completely.
+**anonymization_results**
+- Resultados procesados
+- Campos: id, dataset_id, config_id, anonymized_data, metrics
 
-## Legal Compliance
+**audit_logs**
+- Registro de auditoría
+- Campos: id, user_id, action, resource_type, timestamp
 
-This system implements techniques recognized by major privacy regulations:
-- **GDPR** (General Data Protection Regulation)
-- **HIPAA** (Health Insurance Portability and Accountability Act)
-- **CCPA** (California Consumer Privacy Act)
+Ver esquema completo en: [database/create_database.sql](database/create_database.sql)
 
-Note: While the system provides strong anonymization capabilities, compliance depends on your specific use case and parameters. Consult with a privacy expert for your particular requirements.
+---
 
-## Troubleshooting
+## 🛠️ Desarrollo
 
-### Backend Issues
-- Make sure Python 3.9+ is installed
-- Activate virtual environment before running
-- Check that port 8000 is available
-- Verify Supabase credentials in .env
+### Comandos Útiles
 
-### Frontend Issues
-- Clear browser cache and localStorage
-- Check that backend is running on port 8000
-- Verify Supabase credentials in .env
-- Run `npm install` to ensure all dependencies are installed
+```bash
+# Frontend
+npm run dev          # Servidor de desarrollo
+npm run build        # Build de producción
+npm run preview      # Preview del build
+npm run lint         # Linter
 
-### CORS Errors
-- Ensure backend is running
-- Check that CORS is configured for localhost
-- Verify API URLs in frontend code
+# Backend
+python main.py       # Iniciar servidor
+python -m pytest     # Ejecutar tests (si existen)
 
-## Contributing
+# Base de Datos
+psql -U postgres -d data_anonymization  # Conectar a BD
+pg_dump -U postgres data_anonymization > backup.sql  # Backup
+```
 
-This is a complete, production-ready system. Future enhancements could include:
-- Additional anonymization techniques (bucketization, anatomization)
-- Support for more file formats (JSON, Parquet)
-- Batch processing of multiple files
-- Advanced visualization and reporting
-- API rate limiting
-- Multi-language support
+### Estructura del Código
 
-## License
+```
+src/
+├── components/       # Componentes reutilizables
+├── contexts/         # Contextos de React
+├── lib/              # Utilidades y configuración
+├── pages/            # Páginas de la aplicación
+└── App.tsx           # Componente principal
 
-MIT License
+backend/
+├── main.py           # API FastAPI
+├── database.py       # Conexión a PostgreSQL
+└── requirements.txt  # Dependencias Python
 
-## Support
+database/
+├── create_database.sql  # Script de creación
+└── README.md            # Documentación de BD
+```
 
-For issues or questions:
-1. Check the Documentation page in the app
-2. Review the FAQ section
-3. Examine the detailed technique explanations
-4. Check browser console for errors
-5. Review backend logs for processing issues
+---
 
-## Acknowledgments
+## 🔒 Seguridad
 
-Built with modern privacy-preserving techniques based on academic research and industry best practices.
+### Mejores Prácticas
+
+1. **Credenciales**
+   - NUNCA subir `credentials.json` a git
+   - Usar contraseñas seguras
+   - Rotar credenciales periódicamente
+
+2. **Base de Datos**
+   - Crear usuario específico (no usar postgres)
+   - Habilitar SSL en producción
+   - Configurar firewall correctamente
+
+3. **Backend**
+   - Generar secret_key único
+   - Validar entrada de usuarios
+   - Limitar tamaño de archivos
+
+4. **Producción**
+   - Deshabilitar debug
+   - Configurar CORS correctamente
+   - Usar HTTPS
+
+---
+
+## 📊 Técnicas de Anonimización
+
+### K-Anonimato
+Garantiza que cada registro es indistinguible de al menos K-1 otros registros.
+
+**Ejemplo:** Con K=5, cada combinación de edad+código postal aparece al menos 5 veces.
+
+### L-Diversidad
+Garantiza que cada grupo tiene al menos L valores sensibles distintos.
+
+**Ejemplo:** Con L=3, cada grupo tiene al menos 3 salarios diferentes.
+
+### Privacidad Diferencial
+Agrega ruido calibrado para proteger privacidad individual mientras preserva estadísticas.
+
+**Ejemplo:** Salario real 50,000 → Salario con ruido 50,247.
+
+### Generalización
+Reduce precisión agrupando valores en rangos o categorías.
+
+**Ejemplo:**
+- Edad 25 → Rango "20-30"
+- Madrid → "España"
+
+### Supresión
+Oculta porcentaje de valores con "*".
+
+**Ejemplo:** 10% de códigos postales se reemplazan por "*".
+
+---
+
+## 🧪 Testing
+
+### Datos de Prueba
+
+El proyecto incluye `backend/sample_dataset.csv` con 20 registros de ejemplo:
+- Identificadores: id, email
+- Quasi-identifiers: edad, código postal
+- Sensitive: salario
+- Non-sensitive: ciudad, país
+
+### Probar Anonimización
+
+1. Subir sample_dataset.csv
+2. Configurar:
+   - id, email → Identifier
+   - edad, zipcode → Quasi-identifier
+   - salario → Sensitive
+   - ciudad, país → Non-sensitive
+3. K=5, L=3
+4. Procesar y revisar resultados
+
+---
+
+## 🚨 Solución de Problemas
+
+### Backend no inicia
+
+```bash
+# Verificar PostgreSQL corriendo
+sudo systemctl status postgresql
+
+# Verificar credenciales.json existe
+ls credentials.json
+
+# Verificar dependencias instaladas
+pip list | grep psycopg2
+```
+
+### Error de conexión a base de datos
+
+```bash
+# Verificar contraseña en credentials.json
+# Verificar base de datos existe
+psql -U postgres -l | grep data_anonymization
+
+# Recrear base de datos si es necesario
+psql -U postgres -f database/create_database.sql
+```
+
+### Frontend no carga datos
+
+```bash
+# Verificar backend está corriendo
+curl http://localhost:8000
+
+# Verificar CORS en credentials.json
+# Debe incluir: "http://localhost:5173"
+```
+
+Ver más en [POSTGRESQL_SETUP.md](POSTGRESQL_SETUP.md) sección "Solución de Problemas"
+
+---
+
+## 📁 Archivos de Configuración
+
+| Archivo | Propósito | Ubicación |
+|---------|-----------|-----------|
+| `credentials.json` | Credenciales del sistema | Raíz (no en git) |
+| `credentials.example.json` | Template de credenciales | Raíz (en git) |
+| `config.example.json` | Configuración de ejemplo | Raíz |
+| `.env` | Variables de entorno | Raíz (no en git) |
+| `.env.example` | Template de .env | Raíz (en git) |
+
+---
+
+## 🤝 Contribuir
+
+1. Fork del proyecto
+2. Crear rama feature (`git checkout -b feature/AmazingFeature`)
+3. Commit cambios (`git commit -m 'Add AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abrir Pull Request
+
+---
+
+## 📝 Licencia
+
+Este proyecto está bajo licencia MIT. Ver archivo `LICENSE` para más detalles.
+
+---
+
+## 🙏 Agradecimientos
+
+- FastAPI por el excelente framework
+- React por la librería de UI
+- PostgreSQL por la base de datos robusta
+- Pandas por el procesamiento de datos
+
+---
+
+## 📧 Contacto
+
+Para preguntas o soporte, consultar la documentación en la carpeta del proyecto o abrir un issue.
+
+---
+
+## 🔗 Enlaces Útiles
+
+- [Documentación PostgreSQL](https://www.postgresql.org/docs/)
+- [Documentación FastAPI](https://fastapi.tiangolo.com/)
+- [Documentación React](https://react.dev/)
+- [K-Anonymity Paper](https://epic.org/wp-content/uploads/privacy/reidentification/Sweeney_Article.pdf)
+
+---
+
+**¡Listo para anonimizar datos de forma segura! 🚀**

@@ -9,13 +9,10 @@ from pydantic import BaseModel
 import pandas as pd
 import numpy as np
 from io import BytesIO
-from supabase import create_client, Client
-from dotenv import load_dotenv
 import json
 from collections import Counter
 import math
-
-load_dotenv()
+from database import get_database, load_credentials
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,19 +20,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+credentials = load_credentials()
+db = get_database()
+
 app = FastAPI(title="Data Anonymization System API")
 
+cors_origins = credentials['backend'].get('cors_origins', ['*'])
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-supabase_url = os.getenv("VITE_SUPABASE_URL")
-supabase_key = os.getenv("VITE_SUPABASE_ANON_KEY")
-supabase: Client = create_client(supabase_url, supabase_key)
 
 class ColumnMapping(BaseModel):
     column: str
@@ -62,20 +59,24 @@ def get_current_user():
 
 def log_audit(user_id: str, action: str, resource_type: str, resource_id: str, details: Dict = None):
     try:
-        supabase.table("audit_logs").insert({
+        db.insert_returning("audit_logs", {
             "user_id": user_id,
             "action": action,
             "resource_type": resource_type,
             "resource_id": resource_id,
-            "details": details or {},
-            "created_at": datetime.utcnow().isoformat()
-        }).execute()
+            "details": json.dumps(details or {}),
+            "timestamp": datetime.utcnow()
+        })
     except Exception as e:
         logger.error(f"Failed to log audit: {str(e)}")
 
 @app.get("/")
 def read_root():
-    return {"message": "Data Anonymization System API", "version": "1.0.0"}
+    return {
+        "message": "Data Anonymization System API",
+        "version": "1.0.0",
+        "database": "PostgreSQL"
+    }
 
 @app.post("/api/datasets/upload")
 async def upload_dataset(
@@ -87,8 +88,9 @@ async def upload_dataset(
     if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
         raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls) and CSV files are supported")
 
-    if file.size and file.size > 50 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File size must be less than 50MB")
+    max_size_mb = credentials['backend'].get('max_upload_size_mb', 50)
+    if file.size and file.size > max_size_mb * 1024 * 1024:
+        raise HTTPException(status_code=400, detail=f"File size must be less than {max_size_mb}MB")
 
     try:
         contents = await file.read()
@@ -110,21 +112,26 @@ async def upload_dataset(
             "file_size": len(contents),
             "row_count": len(df),
             "column_count": len(df.columns),
-            "column_names": column_names,
-            "data": data_json,
-            "status": "ready"
+            "column_names": json.dumps(column_names),
+            "data": json.dumps(data_json),
+            "status": "ready",
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
         }
 
-        result = supabase.table("datasets").insert(dataset).execute()
+        result = db.insert_returning("datasets", dataset)
 
-        log_audit(user_id, "upload_dataset", "dataset", result.data[0]["id"], {
+        log_audit(user_id, "upload_dataset", "dataset", result["id"], {
             "filename": file.filename,
             "rows": len(df),
             "columns": len(df.columns)
         })
 
-        logger.info(f"Dataset uploaded successfully: {result.data[0]['id']}")
-        return result.data[0]
+        result['column_names'] = json.loads(result['column_names'])
+        result['data'] = json.loads(result['data'])
+
+        logger.info(f"Dataset uploaded successfully: {result['id']}")
+        return result
 
     except Exception as e:
         logger.error(f"Error uploading dataset: {str(e)}")
@@ -134,8 +141,19 @@ async def upload_dataset(
 def get_datasets(user_id: str = Depends(get_current_user)):
     logger.info(f"User {user_id} fetching datasets")
     try:
-        result = supabase.table("datasets").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
-        return result.data
+        results = db.execute_query(
+            "SELECT * FROM datasets WHERE user_id = %s ORDER BY created_at DESC",
+            (user_id,),
+            fetch=True
+        )
+
+        for result in results:
+            if isinstance(result.get('column_names'), str):
+                result['column_names'] = json.loads(result['column_names'])
+            if isinstance(result.get('data'), str):
+                result['data'] = json.loads(result['data'])
+
+        return results
     except Exception as e:
         logger.error(f"Error fetching datasets: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -144,8 +162,18 @@ def get_datasets(user_id: str = Depends(get_current_user)):
 def get_dataset(dataset_id: str, user_id: str = Depends(get_current_user)):
     logger.info(f"User {user_id} fetching dataset {dataset_id}")
     try:
-        result = supabase.table("datasets").select("*").eq("id", dataset_id).eq("user_id", user_id).single().execute()
-        return result.data
+        result = db.select_one("datasets", {"id": dataset_id, "user_id": user_id})
+        if not result:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+
+        if isinstance(result.get('column_names'), str):
+            result['column_names'] = json.loads(result['column_names'])
+        if isinstance(result.get('data'), str):
+            result['data'] = json.loads(result['data'])
+
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching dataset: {str(e)}")
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -158,20 +186,26 @@ def create_config(config: AnonymizationConfig, user_id: str = Depends(get_curren
             "user_id": user_id,
             "dataset_id": config.dataset_id,
             "name": config.name,
-            "column_mappings": [mapping.dict() for mapping in config.column_mappings],
-            "techniques": [tech.dict() for tech in config.techniques],
-            "global_params": config.global_params
+            "column_mappings": json.dumps([mapping.dict() for mapping in config.column_mappings]),
+            "techniques": json.dumps([tech.dict() for tech in config.techniques]),
+            "global_params": json.dumps(config.global_params),
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
         }
 
-        result = supabase.table("anonymization_configs").insert(config_data).execute()
+        result = db.insert_returning("anonymization_configs", config_data)
 
-        log_audit(user_id, "create_config", "config", result.data[0]["id"], {
+        log_audit(user_id, "create_config", "config", result["id"], {
             "dataset_id": config.dataset_id,
             "name": config.name
         })
 
-        logger.info(f"Config created successfully: {result.data[0]['id']}")
-        return result.data[0]
+        result['column_mappings'] = json.loads(result['column_mappings'])
+        result['techniques'] = json.loads(result['techniques'])
+        result['global_params'] = json.loads(result['global_params'])
+
+        logger.info(f"Config created successfully: {result['id']}")
+        return result
 
     except Exception as e:
         logger.error(f"Error creating config: {str(e)}")
@@ -181,11 +215,24 @@ def create_config(config: AnonymizationConfig, user_id: str = Depends(get_curren
 def get_configs(dataset_id: Optional[str] = None, user_id: str = Depends(get_current_user)):
     logger.info(f"User {user_id} fetching configs")
     try:
-        query = supabase.table("anonymization_configs").select("*").eq("user_id", user_id)
         if dataset_id:
-            query = query.eq("dataset_id", dataset_id)
-        result = query.order("created_at", desc=True).execute()
-        return result.data
+            query = "SELECT * FROM anonymization_configs WHERE user_id = %s AND dataset_id = %s ORDER BY created_at DESC"
+            params = (user_id, dataset_id)
+        else:
+            query = "SELECT * FROM anonymization_configs WHERE user_id = %s ORDER BY created_at DESC"
+            params = (user_id,)
+
+        results = db.execute_query(query, params, fetch=True)
+
+        for result in results:
+            if isinstance(result.get('column_mappings'), str):
+                result['column_mappings'] = json.loads(result['column_mappings'])
+            if isinstance(result.get('techniques'), str):
+                result['techniques'] = json.loads(result['techniques'])
+            if isinstance(result.get('global_params'), str):
+                result['global_params'] = json.loads(result['global_params'])
+
+        return results
     except Exception as e:
         logger.error(f"Error fetching configs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -330,9 +377,21 @@ def apply_l_diversity_algorithm(df: pd.DataFrame, quasi_identifiers: List[str], 
 def apply_techniques(df: pd.DataFrame, config: Dict, technique_details: Dict) -> pd.DataFrame:
     result_df = df.copy()
 
-    quasi_identifiers = [m["column"] for m in config["column_mappings"] if m["type"] == "quasi-identifier"]
-    sensitive_columns = [m["column"] for m in config["column_mappings"] if m["type"] == "sensitive"]
-    identifiers = [m["column"] for m in config["column_mappings"] if m["type"] == "identifier"]
+    column_mappings = config["column_mappings"]
+    if isinstance(column_mappings, str):
+        column_mappings = json.loads(column_mappings)
+
+    techniques_list = config["techniques"]
+    if isinstance(techniques_list, str):
+        techniques_list = json.loads(techniques_list)
+
+    global_params = config["global_params"]
+    if isinstance(global_params, str):
+        global_params = json.loads(global_params)
+
+    quasi_identifiers = [m["column"] for m in column_mappings if m["type"] == "quasi-identifier"]
+    sensitive_columns = [m["column"] for m in column_mappings if m["type"] == "sensitive"]
+    identifiers = [m["column"] for m in column_mappings if m["type"] == "identifier"]
 
     if identifiers:
         for col in identifiers:
@@ -344,7 +403,7 @@ def apply_techniques(df: pd.DataFrame, config: Dict, technique_details: Dict) ->
                     "explanation": "Direct identifiers (like ID, email, SSN) were completely removed to prevent re-identification."
                 }
 
-    for tech in config["techniques"]:
+    for tech in techniques_list:
         col = tech["column"]
         technique = tech["technique"]
         params = tech.get("params", {})
@@ -415,11 +474,11 @@ def apply_techniques(df: pd.DataFrame, config: Dict, technique_details: Dict) ->
                     "explanation": f"Added calibrated random noise (epsilon={epsilon}) to protect individual values while preserving statistical properties."
                 }
 
-    k = config["global_params"].get("k", 2)
+    k = global_params.get("k", 2)
     if quasi_identifiers and k > 1:
         result_df = apply_k_anonymity_algorithm(result_df, quasi_identifiers, k, technique_details)
 
-    l = config["global_params"].get("l", 2)
+    l = global_params.get("l", 2)
     if quasi_identifiers and sensitive_columns and l > 1:
         for sensitive_col in sensitive_columns:
             result_df = apply_l_diversity_algorithm(result_df, quasi_identifiers, sensitive_col, l, technique_details)
@@ -432,16 +491,28 @@ async def process_anonymization(request: ProcessRequest, user_id: str = Depends(
     start_time = time.time()
 
     try:
-        dataset = supabase.table("datasets").select("*").eq("id", request.dataset_id).eq("user_id", user_id).single().execute()
-        config = supabase.table("anonymization_configs").select("*").eq("id", request.config_id).eq("user_id", user_id).single().execute()
+        dataset = db.select_one("datasets", {"id": request.dataset_id, "user_id": user_id})
+        if not dataset:
+            raise HTTPException(status_code=404, detail="Dataset not found")
 
-        df = pd.DataFrame(dataset.data["data"])
+        config = db.select_one("anonymization_configs", {"id": request.config_id, "user_id": user_id})
+        if not config:
+            raise HTTPException(status_code=404, detail="Config not found")
+
+        data = dataset["data"]
+        if isinstance(data, str):
+            data = json.loads(data)
+        df = pd.DataFrame(data)
 
         technique_details = {}
-        anonymized_df = apply_techniques(df, config.data, technique_details)
+        anonymized_df = apply_techniques(df, config, technique_details)
 
-        quasi_identifiers = [m["column"] for m in config.data["column_mappings"] if m["type"] == "quasi-identifier"]
-        sensitive_columns = [m["column"] for m in config.data["column_mappings"] if m["type"] == "sensitive"]
+        column_mappings = config["column_mappings"]
+        if isinstance(column_mappings, str):
+            column_mappings = json.loads(column_mappings)
+
+        quasi_identifiers = [m["column"] for m in column_mappings if m["type"] == "quasi-identifier"]
+        sensitive_columns = [m["column"] for m in column_mappings if m["type"] == "sensitive"]
 
         k_value = calculate_k_anonymity(anonymized_df, quasi_identifiers) if quasi_identifiers else 0
         l_value = calculate_l_diversity(anonymized_df, quasi_identifiers, sensitive_columns[0]) if quasi_identifiers and sensitive_columns else 0.0
@@ -465,25 +536,30 @@ async def process_anonymization(request: ProcessRequest, user_id: str = Depends(
             "user_id": user_id,
             "dataset_id": request.dataset_id,
             "config_id": request.config_id,
-            "anonymized_data": anonymized_df.to_dict(orient='records'),
-            "metrics": metrics,
-            "technique_details": technique_details,
+            "anonymized_data": json.dumps(anonymized_df.to_dict(orient='records')),
+            "metrics": json.dumps(metrics),
+            "technique_details": json.dumps(technique_details),
             "status": "completed",
             "processing_time_ms": processing_time,
-            "completed_at": datetime.utcnow().isoformat()
+            "completed_at": datetime.utcnow(),
+            "created_at": datetime.utcnow()
         }
 
-        result = supabase.table("anonymization_results").insert(result_data).execute()
+        result = db.insert_returning("anonymization_results", result_data)
 
-        log_audit(user_id, "process_anonymization", "result", result.data[0]["id"], {
+        log_audit(user_id, "process_anonymization", "result", result["id"], {
             "dataset_id": request.dataset_id,
             "config_id": request.config_id,
             "k_value": k_value,
             "processing_time_ms": processing_time
         })
 
-        logger.info(f"Processing completed in {processing_time}ms, result: {result.data[0]['id']}")
-        return result.data[0]
+        result['anonymized_data'] = json.loads(result['anonymized_data'])
+        result['metrics'] = json.loads(result['metrics'])
+        result['technique_details'] = json.loads(result['technique_details'])
+
+        logger.info(f"Processing completed in {processing_time}ms, result: {result['id']}")
+        return result
 
     except Exception as e:
         logger.error(f"Error processing anonymization: {str(e)}")
@@ -493,11 +569,24 @@ async def process_anonymization(request: ProcessRequest, user_id: str = Depends(
 def get_results(dataset_id: Optional[str] = None, user_id: str = Depends(get_current_user)):
     logger.info(f"User {user_id} fetching results")
     try:
-        query = supabase.table("anonymization_results").select("*").eq("user_id", user_id)
         if dataset_id:
-            query = query.eq("dataset_id", dataset_id)
-        result = query.order("created_at", desc=True).execute()
-        return result.data
+            query = "SELECT * FROM anonymization_results WHERE user_id = %s AND dataset_id = %s ORDER BY created_at DESC"
+            params = (user_id, dataset_id)
+        else:
+            query = "SELECT * FROM anonymization_results WHERE user_id = %s ORDER BY created_at DESC"
+            params = (user_id,)
+
+        results = db.execute_query(query, params, fetch=True)
+
+        for result in results:
+            if isinstance(result.get('anonymized_data'), str):
+                result['anonymized_data'] = json.loads(result['anonymized_data'])
+            if isinstance(result.get('metrics'), str):
+                result['metrics'] = json.loads(result['metrics'])
+            if isinstance(result.get('technique_details'), str):
+                result['technique_details'] = json.loads(result['technique_details'])
+
+        return results
     except Exception as e:
         logger.error(f"Error fetching results: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -506,8 +595,20 @@ def get_results(dataset_id: Optional[str] = None, user_id: str = Depends(get_cur
 def get_result(result_id: str, user_id: str = Depends(get_current_user)):
     logger.info(f"User {user_id} fetching result {result_id}")
     try:
-        result = supabase.table("anonymization_results").select("*").eq("id", result_id).eq("user_id", user_id).single().execute()
-        return result.data
+        result = db.select_one("anonymization_results", {"id": result_id, "user_id": user_id})
+        if not result:
+            raise HTTPException(status_code=404, detail="Result not found")
+
+        if isinstance(result.get('anonymized_data'), str):
+            result['anonymized_data'] = json.loads(result['anonymized_data'])
+        if isinstance(result.get('metrics'), str):
+            result['metrics'] = json.loads(result['metrics'])
+        if isinstance(result.get('technique_details'), str):
+            result['technique_details'] = json.loads(result['technique_details'])
+
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching result: {str(e)}")
         raise HTTPException(status_code=404, detail="Result not found")
@@ -516,17 +617,26 @@ def get_result(result_id: str, user_id: str = Depends(get_current_user)):
 def get_stats(user_id: str = Depends(get_current_user)):
     logger.info(f"User {user_id} fetching statistics")
     try:
-        datasets = supabase.table("datasets").select("*").eq("user_id", user_id).execute()
-        configs = supabase.table("anonymization_configs").select("*").eq("user_id", user_id).execute()
-        results = supabase.table("anonymization_results").select("*").eq("user_id", user_id).execute()
+        datasets = db.execute_query("SELECT * FROM datasets WHERE user_id = %s", (user_id,), fetch=True)
+        configs = db.execute_query("SELECT * FROM anonymization_configs WHERE user_id = %s", (user_id,), fetch=True)
+        results = db.execute_query("SELECT * FROM anonymization_results WHERE user_id = %s", (user_id,), fetch=True)
 
-        total_rows_processed = sum(r.get("metrics", {}).get("original_rows", 0) for r in results.data)
-        avg_processing_time = sum(r.get("processing_time_ms", 0) for r in results.data) / len(results.data) if results.data else 0
+        total_rows_processed = 0
+        total_processing_time = 0
+
+        for r in results:
+            metrics = r.get("metrics")
+            if isinstance(metrics, str):
+                metrics = json.loads(metrics)
+            total_rows_processed += metrics.get("original_rows", 0)
+            total_processing_time += r.get("processing_time_ms", 0)
+
+        avg_processing_time = total_processing_time / len(results) if results else 0
 
         return {
-            "total_datasets": len(datasets.data),
-            "total_configs": len(configs.data),
-            "total_results": len(results.data),
+            "total_datasets": len(datasets),
+            "total_configs": len(configs),
+            "total_results": len(results),
             "total_rows_processed": total_rows_processed,
             "avg_processing_time_ms": round(avg_processing_time, 2)
         }
@@ -536,4 +646,9 @@ def get_stats(user_id: str = Depends(get_current_user)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    backend_config = credentials['backend']
+    uvicorn.run(
+        app,
+        host=backend_config.get('host', '0.0.0.0'),
+        port=backend_config.get('port', 8000)
+    )
