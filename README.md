@@ -1,6 +1,124 @@
-# Data Anonymization System
+# Sistema de Anonimización de Datos
 
-A comprehensive, public-access system for anonymizing sensitive data using advanced privacy-preserving techniques including K-Anonymity, L-Diversity, T-Closeness, and Differential Privacy.
+Un sistema completo de acceso público para anonimizar datos sensibles usando técnicas avanzadas de preservación de privacidad incluyendo K-Anonimato, L-Diversidad, T-Cercanía y Privacidad Diferencial.
+
+## 🚀 INICIO RÁPIDO - LEE ESTO PRIMERO
+
+### **IMPORTANTE: Esta aplicación tiene DOS componentes que deben ejecutarse**
+
+1. **Backend (Python)** - Procesa la anonimización de datos 🔴 **REQUERIDO**
+2. **Frontend (React)** - Interfaz de usuario (se inicia automáticamente)
+
+---
+
+## 📋 Cómo Iniciar la Aplicación
+
+### PASO 1: Iniciar el Backend (OBLIGATORIO)
+
+El backend **DEBE** estar corriendo para que la aplicación funcione.
+
+#### ✨ Método Rápido (Recomendado)
+
+**En Windows:**
+```bash
+cd backend
+start.bat
+```
+
+**En macOS/Linux:**
+```bash
+cd backend
+chmod +x start.sh
+./start.sh
+```
+
+#### 🛠️ Método Manual
+
+```bash
+# 1. Navegar a la carpeta backend
+cd backend
+
+# 2. Crear entorno virtual (solo primera vez)
+python -m venv venv
+
+# 3. Activar entorno virtual
+# En Windows:
+venv\Scripts\activate
+# En macOS/Linux:
+source venv/bin/activate
+
+# 4. Instalar dependencias (solo primera vez)
+pip install -r requirements.txt
+
+# 5. Iniciar servidor
+python main.py
+```
+
+### PASO 2: Verificar que el Backend Funciona
+
+Abre tu navegador y visita: **http://localhost:8000**
+
+Deberías ver:
+```json
+{
+  "message": "Data Anonymization System API",
+  "version": "1.0.0"
+}
+```
+
+✅ Si ves este mensaje, el backend está funcionando correctamente.
+
+### PASO 3: Usar la Aplicación
+
+El frontend ya está corriendo automáticamente. Si no, ejecuta:
+
+```bash
+npm run dev
+```
+
+Abre tu navegador en la URL que muestre (usualmente http://localhost:5173)
+
+---
+
+## 🆘 Solución de Problemas
+
+### ❌ Error: "No se puede conectar al servidor"
+
+**Causa:** El backend no está corriendo.
+
+**Solución:**
+1. Abre una terminal
+2. Ve a la carpeta `backend`
+3. Ejecuta `start.bat` (Windows) o `./start.sh` (Mac/Linux)
+4. Espera a que veas "Application startup complete"
+5. Recarga la página del frontend
+
+### ❌ Error: "ModuleNotFoundError: No module named 'fastapi'"
+
+**Causa:** Las dependencias de Python no están instaladas.
+
+**Solución:**
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### ❌ Error: "Address already in use"
+
+**Causa:** Ya hay algo usando el puerto 8000.
+
+**Solución:**
+1. Cierra cualquier otra aplicación en el puerto 8000
+2. O mata el proceso: `lsof -ti:8000 | xargs kill -9` (Mac/Linux) o usa el Administrador de Tareas (Windows)
+
+---
+
+## 📖 Documentación Adicional
+
+- [START_BACKEND.md](START_BACKEND.md) - Guía detallada de inicio
+- [backend/README.md](backend/README.md) - Documentación del backend API
+
+---
 
 ## Features
 

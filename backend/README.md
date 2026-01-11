@@ -1,47 +1,104 @@
-# Data Anonymization System - Backend API
+# Backend de Anonimización de Datos
 
-## Installation
+Este backend procesa la anonimización de datos usando algoritmos de privacidad como K-Anonimato, L-Diversidad y Privacidad Diferencial.
 
-1. Install Python dependencies:
+## Requisitos Previos
+
+- Python 3.8 o superior
+- pip (gestor de paquetes de Python)
+
+## Instalación
+
+### 1. Crear un Entorno Virtual (Recomendado)
+
 ```bash
-cd backend
+# En Windows
+python -m venv venv
+venv\Scripts\activate
+
+# En macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 2. Instalar Dependencias
+
+```bash
 pip install -r requirements.txt
 ```
 
-2. Create a `.env` file in the backend directory with your Supabase credentials:
-```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+## Configuración
+
+El backend lee automáticamente las variables de entorno del archivo `.env` en la raíz del proyecto. Asegúrate de que el archivo `.env` contenga:
+
+```env
+VITE_SUPABASE_URL=tu_url_de_supabase
+VITE_SUPABASE_ANON_KEY=tu_clave_anonima
 ```
 
-3. Run the FastAPI server:
+## Ejecución
+
+### Opción 1: Usando Python directamente
+
 ```bash
 python main.py
 ```
 
-The API will be available at `http://localhost:8000`
+### Opción 2: Usando Uvicorn (con recarga automática en desarrollo)
 
-## API Documentation
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
 
-Once the server is running, visit `http://localhost:8000/docs` for interactive API documentation.
+El servidor estará disponible en: **http://localhost:8000**
 
-## Endpoints
+## Verificar que el Backend está Funcionando
 
-- `POST /api/datasets/upload` - Upload Excel/CSV dataset
-- `GET /api/datasets` - Get all user datasets
-- `GET /api/datasets/{id}` - Get specific dataset
-- `POST /api/configs` - Create anonymization configuration
-- `GET /api/configs` - Get all configurations
-- `POST /api/process` - Process anonymization
-- `GET /api/results` - Get all results
-- `GET /api/results/{id}` - Get specific result
-- `GET /api/stats` - Get user statistics
+Abre tu navegador y visita:
+- http://localhost:8000 - Deberías ver un mensaje JSON con información de la API
+- http://localhost:8000/docs - Documentación interactiva de la API (Swagger UI)
 
-## Implemented Techniques
+## API Endpoints
 
-1. **K-Anonymity** - Ensures each record is indistinguishable from at least k-1 others
-2. **L-Diversity** - Ensures diversity of sensitive attributes
-3. **T-Closeness** - Maintains distribution of sensitive attributes
-4. **Differential Privacy** - Adds calibrated noise to protect individual privacy
-5. **Generalization** - Replaces specific values with broader categories
-6. **Suppression** - Masks or removes sensitive values
+- `POST /api/datasets/upload` - Subir un dataset
+- `GET /api/datasets` - Listar todos los datasets
+- `POST /api/configs` - Crear configuración de anonimización
+- `POST /api/process` - Procesar anonimización
+- `GET /api/results` - Obtener resultados de anonimización
+
+## Solución de Problemas
+
+### Error: "ModuleNotFoundError"
+Asegúrate de haber activado el entorno virtual e instalado todas las dependencias.
+
+### Error: "Address already in use"
+El puerto 8000 ya está en uso. Puedes:
+1. Cerrar la aplicación que usa el puerto 8000
+2. O cambiar el puerto: `python main.py --port 8001`
+
+### Error: "Cannot connect to Supabase"
+Verifica que las variables de entorno en `.env` sean correctas.
+
+## Estructura del Proyecto
+
+```
+backend/
+├── main.py              # Aplicación FastAPI principal
+├── requirements.txt     # Dependencias de Python
+├── README.md           # Este archivo
+└── sample_dataset.csv  # Dataset de ejemplo para pruebas
+```
+
+## Tecnologías Utilizadas
+
+- **FastAPI** - Framework web moderno y rápido
+- **Pandas** - Procesamiento de datos
+- **NumPy** - Operaciones numéricas
+- **Scikit-learn** - Algoritmos de machine learning
+- **Supabase** - Base de datos y autenticación
+
+## Notas de Desarrollo
+
+- El backend usa CORS configurado para aceptar solicitudes desde cualquier origen (`*`) para facilitar el desarrollo
+- En producción, deberías restringir CORS a tu dominio específico
+- Los logs se escriben en la consola para facilitar la depuración
