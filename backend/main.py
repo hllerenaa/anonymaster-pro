@@ -13,7 +13,7 @@ from io import BytesIO
 import json
 from collections import Counter
 import math
-from backend.database import get_database, load_credentials
+from database import get_database, load_credentials
 
 logging.basicConfig(
     level=logging.INFO,
