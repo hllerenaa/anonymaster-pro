@@ -35,6 +35,8 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ selectedResultId, onNa
   const [loading, setLoading] = useState(true);
   const [showData, setShowData] = useState(false);
   const [error, setError] = useState('');
+  const [dataCurrentPage, setDataCurrentPage] = useState(1);
+  const dataRowsPerPage = 20;
 
   useEffect(() => {
     fetchResults();
@@ -48,6 +50,11 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ selectedResultId, onNa
       }
     }
   }, [selectedResultId, results]);
+
+  useEffect(() => {
+    // Reset to page 1 when showing/hiding data
+    setDataCurrentPage(1);
+  }, [showData]);
 
   const fetchResults = async () => {
     try {
@@ -357,6 +364,35 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ selectedResultId, onNa
       {showData && (
         <div className="bg-white rounded-xl p-6 shadow-md border border-slate-200">
           <h2 className="text-xl font-bold text-slate-900 mb-4">Vista Previa de Datos Anonimizados</h2>
+
+          {/* Paginación superior */}
+          {selectedResult.anonymized_data.length > dataRowsPerPage && (
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-200">
+              <div className="text-sm text-slate-600">
+                Mostrando {((dataCurrentPage - 1) * dataRowsPerPage) + 1} - {Math.min(dataCurrentPage * dataRowsPerPage, selectedResult.anonymized_data.length)} de {selectedResult.anonymized_data.length} filas
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setDataCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={dataCurrentPage === 1}
+                  className="px-3 py-1 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-slate-600">
+                  Página {dataCurrentPage} de {Math.ceil(selectedResult.anonymized_data.length / dataRowsPerPage)}
+                </span>
+                <button
+                  onClick={() => setDataCurrentPage(prev => Math.min(Math.ceil(selectedResult.anonymized_data.length / dataRowsPerPage), prev + 1))}
+                  disabled={dataCurrentPage >= Math.ceil(selectedResult.anonymized_data.length / dataRowsPerPage)}
+                  className="px-3 py-1 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -370,22 +406,50 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ selectedResultId, onNa
                 </tr>
               </thead>
               <tbody>
-                {selectedResult.anonymized_data.slice(0, 20).map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    {Object.values(row).map((value: any, cellIdx) => (
-                      <td key={cellIdx} className="px-4 py-2 text-sm text-slate-600 border border-slate-200">
-                        {value?.toString() || '-'}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                {selectedResult.anonymized_data
+                  .slice(
+                    (dataCurrentPage - 1) * dataRowsPerPage,
+                    dataCurrentPage * dataRowsPerPage
+                  )
+                  .map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50">
+                      {Object.values(row).map((value: any, cellIdx) => (
+                        <td key={cellIdx} className="px-4 py-2 text-sm text-slate-600 border border-slate-200">
+                          {value?.toString() || '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
-          {selectedResult.anonymized_data.length > 20 && (
-            <p className="text-sm text-slate-500 mt-4 text-center">
-              Mostrando las primeras 20 filas de {selectedResult.anonymized_data.length}
-            </p>
+
+          {/* Paginación inferior */}
+          {selectedResult.anonymized_data.length > dataRowsPerPage && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+              <div className="text-sm text-slate-600">
+                Mostrando {((dataCurrentPage - 1) * dataRowsPerPage) + 1} - {Math.min(dataCurrentPage * dataRowsPerPage, selectedResult.anonymized_data.length)} de {selectedResult.anonymized_data.length} filas
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setDataCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={dataCurrentPage === 1}
+                  className="px-3 py-1 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-slate-600">
+                  Página {dataCurrentPage} de {Math.ceil(selectedResult.anonymized_data.length / dataRowsPerPage)}
+                </span>
+                <button
+                  onClick={() => setDataCurrentPage(prev => Math.min(Math.ceil(selectedResult.anonymized_data.length / dataRowsPerPage), prev + 1))}
+                  disabled={dataCurrentPage >= Math.ceil(selectedResult.anonymized_data.length / dataRowsPerPage)}
+                  className="px-3 py-1 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}

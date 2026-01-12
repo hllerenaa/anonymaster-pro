@@ -25,10 +25,17 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onNavigate }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [previewData, setPreviewData] = useState<Dataset | null>(null);
+  const [previewPage, setPreviewPage] = useState(1);
+  const previewRowsPerPage = 10;
 
   useEffect(() => {
     fetchDatasets();
   }, []);
+
+  useEffect(() => {
+    // Reset to page 1 when preview data changes
+    setPreviewPage(1);
+  }, [previewData]);
 
   const fetchDatasets = async () => {
     setLoading(true);
@@ -365,6 +372,34 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onNavigate }) => {
               </button>
             </div>
             <div className="p-6 overflow-auto flex-1">
+              {/* Paginación superior */}
+              {previewData.data.length > previewRowsPerPage && (
+                <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-200">
+                  <div className="text-sm text-slate-600">
+                    Mostrando {((previewPage - 1) * previewRowsPerPage) + 1} - {Math.min(previewPage * previewRowsPerPage, previewData.data.length)} de {previewData.data.length} filas
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setPreviewPage(prev => Math.max(1, prev - 1))}
+                      disabled={previewPage === 1}
+                      className="px-3 py-1 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Anterior
+                    </button>
+                    <span className="text-sm text-slate-600">
+                      Página {previewPage} de {Math.ceil(previewData.data.length / previewRowsPerPage)}
+                    </span>
+                    <button
+                      onClick={() => setPreviewPage(prev => Math.min(Math.ceil(previewData.data.length / previewRowsPerPage), prev + 1))}
+                      disabled={previewPage >= Math.ceil(previewData.data.length / previewRowsPerPage)}
+                      className="px-3 py-1 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
@@ -377,22 +412,50 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onNavigate }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {previewData.data.slice(0, 10).map((row, rowIdx) => (
-                      <tr key={rowIdx} className="hover:bg-slate-50">
-                        {previewData.column_names.map((col, colIdx) => (
-                          <td key={colIdx} className="px-4 py-2 text-sm text-slate-600 border border-slate-200">
-                            {row[col]?.toString() || '-'}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
+                    {previewData.data
+                      .slice(
+                        (previewPage - 1) * previewRowsPerPage,
+                        previewPage * previewRowsPerPage
+                      )
+                      .map((row, rowIdx) => (
+                        <tr key={rowIdx} className="hover:bg-slate-50">
+                          {previewData.column_names.map((col, colIdx) => (
+                            <td key={colIdx} className="px-4 py-2 text-sm text-slate-600 border border-slate-200">
+                              {row[col]?.toString() || '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
-              {previewData.data.length > 10 && (
-                <p className="text-sm text-slate-500 mt-4 text-center">
-                  Mostrando las primeras 10 filas de {previewData.data.length}
-                </p>
+
+              {/* Paginación inferior */}
+              {previewData.data.length > previewRowsPerPage && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+                  <div className="text-sm text-slate-600">
+                    Mostrando {((previewPage - 1) * previewRowsPerPage) + 1} - {Math.min(previewPage * previewRowsPerPage, previewData.data.length)} de {previewData.data.length} filas
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setPreviewPage(prev => Math.max(1, prev - 1))}
+                      disabled={previewPage === 1}
+                      className="px-3 py-1 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Anterior
+                    </button>
+                    <span className="text-sm text-slate-600">
+                      Página {previewPage} de {Math.ceil(previewData.data.length / previewRowsPerPage)}
+                    </span>
+                    <button
+                      onClick={() => setPreviewPage(prev => Math.min(Math.ceil(previewData.data.length / previewRowsPerPage), prev + 1))}
+                      disabled={previewPage >= Math.ceil(previewData.data.length / previewRowsPerPage)}
+                      className="px-3 py-1 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
