@@ -35,14 +35,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class ColumnMapping(BaseModel):
     column: str
     type: str
+
 
 class TechniqueConfig(BaseModel):
     column: str
     technique: str
     params: Dict[str, Any] = {}
+
 
 class AnonymizationConfig(BaseModel):
     dataset_id: str
@@ -51,12 +54,15 @@ class AnonymizationConfig(BaseModel):
     techniques: List[TechniqueConfig]
     global_params: Dict[str, Any]
 
+
 class ProcessRequest(BaseModel):
     dataset_id: str
     config_id: str
 
+
 def get_current_user():
     return "public-user"
+
 
 def log_audit(user_id: str, action: str, resource_type: str, resource_id: str, details: Dict = None):
     try:
@@ -70,6 +76,7 @@ def log_audit(user_id: str, action: str, resource_type: str, resource_id: str, d
         })
     except Exception as e:
         logger.error(f"Failed to log audit: {str(e)}")
+
 
 @app.get("/", response_class=HTMLResponse)
 def read_root():
@@ -547,10 +554,11 @@ def read_root():
     """
     return HTMLResponse(content=html_content)
 
+
 @app.post("/api/datasets/upload")
 async def upload_dataset(
-    file: UploadFile = File(...),
-    user_id: str = Depends(get_current_user)
+        file: UploadFile = File(...),
+        user_id: str = Depends(get_current_user)
 ):
     logger.info(f"User {user_id} uploading file: {file.filename}")
 
@@ -598,9 +606,10 @@ async def upload_dataset(
 
         # result['column_names'] = json.loads(result['column_names'])
         # result['data'] = json.loads(result['data'])
-        result['column_names'] = json.loads(result['column_names']) if isinstance(result.get('column_names'), str) else result.get('column_names', [])
+        result['column_names'] = json.loads(result['column_names']) if isinstance(result.get('column_names'),
+                                                                                  str) else result.get('column_names',
+                                                                                                       [])
         result['data'] = json.loads(result['data']) if isinstance(result.get('data'), str) else result.get('data', [])
-
 
         logger.info(f"Dataset uploaded successfully: {result['id']}")
         return result
@@ -609,6 +618,7 @@ async def upload_dataset(
         linea_error = e.__traceback__.tb_lineno
         logger.error(f"Error uploading dataset: {str(e)} - Line: {linea_error}")
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)} - Line: {linea_error}")
+
 
 @app.get("/api/datasets")
 def get_datasets(user_id: str = Depends(get_current_user)):
@@ -631,6 +641,7 @@ def get_datasets(user_id: str = Depends(get_current_user)):
         logger.error(f"Error fetching datasets: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/datasets/{dataset_id}")
 def get_dataset(dataset_id: str, user_id: str = Depends(get_current_user)):
     logger.info(f"User {user_id} fetching dataset {dataset_id}")
@@ -650,6 +661,7 @@ def get_dataset(dataset_id: str, user_id: str = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Error fetching dataset: {str(e)}")
         raise HTTPException(status_code=404, detail="Dataset not found")
+
 
 @app.post("/api/configs")
 def create_config(config: AnonymizationConfig, user_id: str = Depends(get_current_user)):
@@ -677,9 +689,14 @@ def create_config(config: AnonymizationConfig, user_id: str = Depends(get_curren
         # result['techniques'] = json.loads(result['techniques'])
         # result['global_params'] = json.loads(result['global_params'])
 
-        result['column_mappings'] = json.loads(result['column_mappings']) if isinstance(result.get('column_mappings'), str) else result.get('column_mappings', [])
-        result['techniques'] = json.loads(result['techniques']) if isinstance(result.get('techniques'), str) else result.get('techniques', [])
-        result['global_params'] = json.loads(result['global_params']) if isinstance(result.get('global_params'), str) else result.get('global_params', {})
+        result['column_mappings'] = json.loads(result['column_mappings']) if isinstance(result.get('column_mappings'),
+                                                                                        str) else result.get(
+            'column_mappings', [])
+        result['techniques'] = json.loads(result['techniques']) if isinstance(result.get('techniques'),
+                                                                              str) else result.get('techniques', [])
+        result['global_params'] = json.loads(result['global_params']) if isinstance(result.get('global_params'),
+                                                                                    str) else result.get(
+            'global_params', {})
 
         logger.info(f"Config created successfully: {result['id']}")
         return result
@@ -687,6 +704,7 @@ def create_config(config: AnonymizationConfig, user_id: str = Depends(get_curren
     except Exception as e:
         logger.error(f"Error creating config: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/configs")
 def get_configs(dataset_id: Optional[str] = None, user_id: str = Depends(get_current_user)):
@@ -724,11 +742,13 @@ def calculate_k_anonymity(df: pd.DataFrame, quasi_identifiers: List[str]) -> int
     groups = df.groupby(quasi_identifiers).size()
     return int(groups.min()) if len(groups) > 0 else 0
 
+
 def calculate_l_diversity(df: pd.DataFrame, quasi_identifiers: List[str], sensitive_attr: str) -> float:
     if not quasi_identifiers or not sensitive_attr:
         return 0.0
     groups = df.groupby(quasi_identifiers)[sensitive_attr]
     return float(groups.apply(lambda x: len(x.unique())).min())
+
 
 def calculate_information_loss(original_df: pd.DataFrame, anonymized_df: pd.DataFrame, columns: List[str]) -> float:
     total_loss = 0.0
@@ -761,30 +781,150 @@ def calculate_information_loss(original_df: pd.DataFrame, anonymized_df: pd.Data
 
     return (total_loss / len(columns)) * 100 if columns else 0.0
 
+
 # --------------------------------------------------
 # FUNCIONES DE APOYO
 # --------------------------------------------------
-def generalize_numeric(series: pd.Series, bins: int = 5) -> pd.Series:
+def generalize_numeric(series: pd.Series, bins: int = 5):
+    """
+    Generaliza valores numéricos en rangos y retorna tanto la serie generalizada
+    como los detalles de los rangos creados.
+    """
     try:
-        labels = [f"Rango {i+1}" for i in range(bins)]
-        return pd.cut(series, bins=bins, labels=labels, duplicates='drop')
-    except Exception:
-        return series.astype(str)
+        # Crear los rangos
+        result, bin_edges = pd.cut(series, bins=bins, retbins=True, duplicates='drop')
 
-def generalize_categorical(series: pd.Series, levels: int = 1) -> pd.Series:
-    if levels == 1:
-        return pd.Series(['Generalizado'] * len(series), index=series.index)
-    counts = series.value_counts()
-    top = counts.head(levels).index.tolist()
-    return series.apply(lambda x: x if x in top else 'Otros')
+        # Crear detalles de los rangos
+        range_details = {}
+        actual_bins = len(bin_edges) - 1
+
+        for i in range(actual_bins):
+            label = f"Rango {i + 1}"
+            min_val = bin_edges[i]
+            max_val = bin_edges[i + 1]
+
+            # Contar valores en este rango
+            mask = (series > min_val) & (series <= max_val) if i > 0 else (series >= min_val) & (series <= max_val)
+            count = mask.sum()
+
+            range_details[label] = {
+                "range": f"{round(float(min_val), 2)} - {round(float(max_val), 2)}",
+                "min": round(float(min_val), 2),
+                "max": round(float(max_val), 2),
+                "count": int(count),
+                "percentage": round((count / len(series)) * 100, 1)
+            }
+
+        # Aplicar las etiquetas
+        labels = [f"Rango {i + 1}" for i in range(actual_bins)]
+        result_series = pd.cut(series, bins=bins, labels=labels, duplicates='drop')
+
+        return result_series, range_details
+
+    except Exception as e:
+        return series.astype(str), {"error": str(e)}
+
+
+def generalize_categorical(series: pd.Series, levels: int = 1):
+    """
+    Generaliza valores categóricos manteniendo los top N y agrupando el resto.
+    Retorna tanto la serie generalizada como los detalles de la agrupación.
+    """
+    details = {
+        "kept_categories": [],
+        "grouped_categories": [],
+        "distribution": {}
+    }
+
+    if levels == 0 or levels == 1:
+        # Agrupar todo
+        result_series = pd.Series(['Generalizado'] * len(series), index=series.index)
+
+        # Contar valores originales
+        value_counts = series.value_counts()
+        details["grouped_categories"] = [
+            {
+                "value": str(val),
+                "count": int(count),
+                "percentage": round((count / len(series)) * 100, 1)
+            }
+            for val, count in value_counts.items()
+        ]
+        details["total_grouped"] = len(series)
+
+    else:
+        # Mantener top N categorías
+        counts = series.value_counts()
+        top_values = counts.head(levels).index.tolist()
+
+        # Crear serie generalizada
+        result_series = series.apply(lambda x: x if x in top_values else 'Otros')
+
+        # Detalles de categorías mantenidas
+        for val in top_values:
+            count = counts[val]
+            details["kept_categories"].append({
+                "value": str(val),
+                "count": int(count),
+                "percentage": round((count / len(series)) * 100, 1)
+            })
+
+        # Detalles de categorías agrupadas en "Otros"
+        grouped_values = counts[~counts.index.isin(top_values)]
+        for val, count in grouped_values.items():
+            details["grouped_categories"].append({
+                "value": str(val),
+                "count": int(count),
+                "percentage": round((count / len(series)) * 100, 1)
+            })
+
+        details["total_kept"] = int(sum(counts[val] for val in top_values))
+        details["total_grouped"] = int(sum(counts[val] for val in grouped_values.index))
+
+        # Distribución final
+        final_counts = result_series.value_counts()
+        for val, count in final_counts.items():
+            details["distribution"][str(val)] = {
+                "count": int(count),
+                "percentage": round((count / len(series)) * 100, 1)
+            }
+
+    return result_series, details
+
 
 def suppress_data(series: pd.Series, threshold: float = 0.1) -> pd.Series:
+    """
+    Suprime un porcentaje de datos reemplazándolos con '*'.
+
+    Args:
+        series: Serie de pandas con los datos a suprimir
+        threshold: Porcentaje de datos a suprimir (0.0 a 1.0)
+
+    Returns:
+        Serie con datos suprimidos
+    """
     result = series.copy()
     n = int(len(series) * threshold)
-    if n > 0:
-        idx = np.random.choice(series.index, size=n, replace=False)
-        result.loc[idx] = '*'
+
+    # Asegurar que n no sea mayor que el tamaño de la serie
+    available_size = len(series.index.unique())
+    n = min(n, available_size)
+
+    if n > 0 and available_size > 0:
+        try:
+            # Usar índices únicos para evitar problemas con duplicados
+            unique_indices = series.index.unique()
+            idx = np.random.choice(unique_indices, size=n, replace=False)
+            result.loc[idx] = '*'
+        except ValueError as e:
+            # Si aún hay error, suprimir el mínimo entre n y available_size
+            logger.warning(f"Error en suppress_data: {str(e)}. Ajustando tamaño de muestra.")
+            n = min(n, len(series))
+            if n > 0:
+                idx = series.index[:n]
+                result.loc[idx] = '*'
     return result
+
 
 def apply_differential_privacy(series: pd.Series, epsilon: float = 1.0) -> pd.Series:
     if not pd.api.types.is_numeric_dtype(series):
@@ -795,6 +935,7 @@ def apply_differential_privacy(series: pd.Series, epsilon: float = 1.0) -> pd.Se
     scale = sensitivity / epsilon
     noise = np.random.laplace(0, scale, size=len(series))
     return series + noise
+
 
 # --------------------------------------------------
 # K-ANONIMATO
@@ -835,6 +976,7 @@ def apply_k_anonymity_algorithm(df, quasi_identifiers, k, technique_details):
     }
     return result_df
 
+
 # --------------------------------------------------
 # L-DIVERSIDAD
 # --------------------------------------------------
@@ -866,6 +1008,7 @@ def apply_l_diversity_algorithm(df, quasi_identifiers, sensitive_col, l, techniq
         )
     }
     return result_df
+
 
 # --------------------------------------------------
 # APLICACIÓN DE TÉCNICAS
@@ -923,18 +1066,20 @@ def apply_techniques(df, config, technique_details):
         if tech["technique"] == "generalization":
             if pd.api.types.is_numeric_dtype(result_df[col]):
                 bins = params.get("bins", 5)
-                result_df[col] = generalize_numeric(result_df[col], bins)
+                result_df[col], range_details = generalize_numeric(result_df[col], bins)
                 explanation = (
                     "Los valores numéricos exactos fueron reemplazados por rangos "
                     "para disminuir el nivel de detalle del dato."
                 )
+                params["ranges"] = range_details
             else:
                 levels = params.get("levels", 1)
-                result_df[col] = generalize_categorical(result_df[col], levels)
+                result_df[col], category_details = generalize_categorical(result_df[col], levels)
                 explanation = (
                     "Los valores específicos fueron agrupados en categorías "
                     "más generales para evitar valores únicos."
                 )
+                params["categorization"] = category_details
 
             technique_details[f"generalization_{col}"] = {
                 "technique": "Generalización",
@@ -953,7 +1098,7 @@ def apply_techniques(df, config, technique_details):
                 "column": col,
                 "params": params,
                 "changes": [
-                    f"Se ocultaron {suppressed_count} valores ({threshold*100}%) usando '*'"
+                    f"Se ocultaron {suppressed_count} valores ({threshold * 100}%) usando '*'"
                 ],
                 "explanation": (
                     "Una parte de los datos fue ocultada aleatoriamente "
@@ -1029,7 +1174,8 @@ async def process_anonymization(request: ProcessRequest, user_id: str = Depends(
         sensitive_columns = [m["column"] for m in column_mappings if m["type"] == "sensitive"]
 
         k_value = calculate_k_anonymity(anonymized_df, quasi_identifiers) if quasi_identifiers else 0
-        l_value = calculate_l_diversity(anonymized_df, quasi_identifiers, sensitive_columns[0]) if quasi_identifiers and sensitive_columns else 0.0
+        l_value = calculate_l_diversity(anonymized_df, quasi_identifiers,
+                                        sensitive_columns[0]) if quasi_identifiers and sensitive_columns else 0.0
         info_loss = calculate_information_loss(df, anonymized_df, df.columns.tolist())
 
         metrics = {
@@ -1072,9 +1218,13 @@ async def process_anonymization(request: ProcessRequest, user_id: str = Depends(
         # result['metrics'] = json.loads(result['metrics'])
         # result['technique_details'] = json.loads(result['technique_details'])
 
-        result['anonymized_data'] = json.loads(result['anonymized_data']) if isinstance(result.get('anonymized_data'), str) else result.get('anonymized_data', [])
-        result['metrics'] = json.loads(result['metrics']) if isinstance(result.get('metrics'), str) else result.get('metrics', {})
-        result['technique_details'] = json.loads(result['technique_details']) if isinstance(result.get('technique_details'), str) else result.get('technique_details', {})
+        result['anonymized_data'] = json.loads(result['anonymized_data']) if isinstance(result.get('anonymized_data'),
+                                                                                        str) else result.get(
+            'anonymized_data', [])
+        result['metrics'] = json.loads(result['metrics']) if isinstance(result.get('metrics'), str) else result.get(
+            'metrics', {})
+        result['technique_details'] = json.loads(result['technique_details']) if isinstance(
+            result.get('technique_details'), str) else result.get('technique_details', {})
 
         logger.info(f"Processing completed in {processing_time}ms, result: {result['id']}")
         return result
@@ -1082,6 +1232,7 @@ async def process_anonymization(request: ProcessRequest, user_id: str = Depends(
     except Exception as e:
         logger.error(f"Error processing anonymization: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/results")
 def get_results(dataset_id: Optional[str] = None, user_id: str = Depends(get_current_user)):
@@ -1109,6 +1260,7 @@ def get_results(dataset_id: Optional[str] = None, user_id: str = Depends(get_cur
         logger.error(f"Error fetching results: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/results/{result_id}")
 def get_result(result_id: str, user_id: str = Depends(get_current_user)):
     logger.info(f"User {user_id} fetching result {result_id}")
@@ -1130,6 +1282,7 @@ def get_result(result_id: str, user_id: str = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Error fetching result: {str(e)}")
         raise HTTPException(status_code=404, detail="Result not found")
+
 
 @app.get("/api/stats")
 def get_stats(user_id: str = Depends(get_current_user)):
@@ -1162,8 +1315,10 @@ def get_stats(user_id: str = Depends(get_current_user)):
         logger.error(f"Error fetching stats: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 if __name__ == "__main__":
     import uvicorn
+
     backend_config = credentials['backend']
     uvicorn.run(
         app,
