@@ -302,7 +302,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({onNavigate}) => {
                                             className="bg-red-200 px-1 rounded">backend</code></li>
                                         <li>Ejecuta: <code className="bg-red-200 px-1 rounded">python main.py</code>
                                         </li>
-                                        <li>Verifica que el servidor esté corriendo en http://localhost:8000</li>
                                     </ol>
                                 </div>
                             )}
