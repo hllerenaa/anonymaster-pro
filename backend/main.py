@@ -13,7 +13,7 @@ from io import BytesIO
 import json
 from collections import Counter
 import math
-from database import get_database, load_credentials
+from backend.database import get_database, load_credentials
 
 logging.basicConfig(
     level=logging.INFO,
@@ -785,12 +785,35 @@ def calculate_information_loss(original_df: pd.DataFrame, anonymized_df: pd.Data
 # --------------------------------------------------
 # FUNCIONES DE APOYO
 # --------------------------------------------------
-def generalize_numeric(series: pd.Series, bins: int = 5) -> pd.Series:
+def generalize_numeric(series: pd.Series, bins: int = 5, return_bins: bool = False):
     try:
-        labels = [f"Rango {i + 1}" for i in range(bins)]
-        return pd.cut(series, bins=bins, labels=labels, duplicates='drop')
+        # pd.cut con retbins devuelve la serie categórica y los límites usados
+        cat, bins_edges = pd.cut(series, bins=bins, duplicates='drop', retbins=True)
+
+        # Convertir las categorías a intervalos legibles
+        result = cat.apply(lambda x: f"{_format_edge_value(x.left)}-{_format_edge_value(x.right)}" if pd.notna(x) else str(x))
+
+        if return_bins:
+            return result, bins_edges
+        return result
     except Exception:
+        if return_bins:
+            return series.astype(str), None
         return series.astype(str)
+
+
+# Helper para formatear los valores de los límites de intervalo
+def _format_edge_value(v):
+    try:
+        if v is None or (isinstance(v, float) and (math.isinf(v) or math.isnan(v))):
+            return str(v)
+        fv = float(v)
+        # Mostrar como entero si es entero, sino con 2 decimales
+        if fv.is_integer():
+            return str(int(round(fv)))
+        return str(round(fv, 2))
+    except Exception:
+        return str(v)
 
 
 def generalize_categorical(series: pd.Series, levels: int = 1) -> pd.Series:
@@ -803,14 +826,22 @@ def generalize_categorical(series: pd.Series, levels: int = 1) -> pd.Series:
 
 def suppress_data(series: pd.Series, threshold: float = 0.1) -> pd.Series:
     """
-    Suprime un porcentaje de datos reemplazándolos con '*'.
+    TÉCNICA DE SUPRESIÓN (SUPPRESSION)
+
+    Esta es la técnica que OCULTA valores reemplazándolos con asteriscos '*'.
+    Se usa cuando se quiere eliminar información sensible de forma aleatoria.
+
+    Ejemplo:
+        Antes: ["Diabetes", "Asma", "Hipertensión", "Diabetes", "Ninguna"]
+        Después (threshold=0.2): ["*", "Asma", "*", "Diabetes", "Ninguna"]
 
     Args:
         series: Serie de pandas con los datos a suprimir
-        threshold: Porcentaje de datos a suprimir (0.0 a 1.0)
+        threshold: Porcentaje de datos a suprimir/ocultar (0.0 a 1.0)
+                  Por defecto 0.1 = 10% de los valores se ocultarán con '*'
 
     Returns:
-        Serie con datos suprimidos
+        Serie con datos suprimidos (algunos valores reemplazados por '*')
     """
     result = series.copy()
     n = int(len(series) * threshold)
@@ -846,6 +877,123 @@ def apply_differential_privacy(series: pd.Series, epsilon: float = 1.0) -> pd.Se
     return series + noise
 
 
+def apply_pseudonymization(series: pd.Series, prefix: str = "USER") -> pd.Series:
+    """
+    TÉCNICA DE PSEUDONIMIZACIÓN (PSEUDONYMIZATION)
+
+    Reemplaza valores reales con pseudónimos únicos y consistentes.
+    El mismo valor siempre genera el mismo pseudónimo.
+
+    Ejemplo:
+        Antes: ["Juan Pérez", "María García", "Juan Pérez", "Pedro López"]
+        Después: ["USER_001", "USER_002", "USER_001", "USER_003"]
+
+    Args:
+        series: Serie de pandas con los datos a pseudonimizar
+        prefix: Prefijo para los pseudónimos (default: "USER")
+
+    Returns:
+        Serie con pseudónimos consistentes
+    """
+    import hashlib
+
+    # Crear mapeo consistente: mismo valor → mismo pseudónimo
+    unique_values = series.unique()
+    pseudonym_map = {}
+
+    for idx, value in enumerate(unique_values, start=1):
+        if pd.isna(value):
+            pseudonym_map[value] = None
+        else:
+            # Usar hash para generar un ID consistente
+            hash_obj = hashlib.md5(str(value).encode())
+            hash_hex = hash_obj.hexdigest()[:6]  # Primeros 6 caracteres del hash
+            pseudonym_map[value] = f"{prefix}_{hash_hex}"
+
+    return series.map(pseudonym_map)
+
+
+def apply_masking(series: pd.Series, mask_type: str = "partial", mask_char: str = "*") -> pd.Series:
+    """
+    TÉCNICA DE ENMASCARAMIENTO (MASKING)
+
+    Enmascara parcialmente datos sensibles manteniendo el formato.
+
+    Ejemplos:
+        - Email: "juan.perez@email.com" → "j***@email.com"
+        - Teléfono: "612345678" → "612***678"
+        - Nombre: "Juan Pérez" → "J*** P***"
+        - Texto: "Información" → "Inf*******"
+
+    Args:
+        series: Serie de pandas con los datos a enmascarar
+        mask_type: Tipo de enmascaramiento
+            - "partial": Mantiene inicio y fin
+            - "email": Enmascara usuario del email
+            - "phone": Enmascara parte central del teléfono
+            - "middle": Enmascarara solo la parte central
+        mask_char: Carácter para enmascarar (default: "*")
+
+    Returns:
+        Serie con datos enmascarados
+    """
+    def mask_value(value):
+        if pd.isna(value):
+            return value
+
+        value_str = str(value)
+
+        if mask_type == "email":
+            # Enmascarar email: mantener primera letra y dominio
+            if "@" in value_str:
+                parts = value_str.split("@")
+                username = parts[0]
+                domain = parts[1] if len(parts) > 1 else ""
+                if len(username) > 1:
+                    masked_user = username[0] + mask_char * (len(username) - 1)
+                    return f"{masked_user}@{domain}"
+            return value_str
+
+        elif mask_type == "phone":
+            # Enmascarar teléfono: mantener inicio y fin
+            if len(value_str) >= 6:
+                start = value_str[:3]
+                end = value_str[-3:]
+                middle_len = len(value_str) - 6
+                return f"{start}{mask_char * middle_len}{end}"
+            return value_str
+
+        elif mask_type == "middle":
+            # Enmascarar solo la parte central
+            if len(value_str) >= 4:
+                start = value_str[:2]
+                end = value_str[-2:]
+                middle_len = len(value_str) - 4
+                return f"{start}{mask_char * middle_len}{end}"
+            return value_str
+
+        elif mask_type == "partial":
+            # Enmascaramiento parcial por defecto
+            if len(value_str) > 3:
+                # Para nombres con espacios (ej: "Juan Pérez")
+                if " " in value_str:
+                    parts = value_str.split()
+                    masked_parts = [p[0] + mask_char * (len(p) - 1) for p in parts]
+                    return " ".join(masked_parts)
+                else:
+                    # Para texto simple
+                    return value_str[:3] + mask_char * (len(value_str) - 3)
+            return value_str
+
+        else:
+            # Enmascaramiento por defecto (parcial)
+            if len(value_str) > 3:
+                return value_str[:3] + mask_char * (len(value_str) - 3)
+            return value_str
+
+    return series.apply(mask_value)
+
+
 # --------------------------------------------------
 # K-ANONIMATO
 # --------------------------------------------------
@@ -860,8 +1008,9 @@ def apply_k_anonymity_algorithm(df, quasi_identifiers, k, technique_details):
         original_unique = result_df[col].nunique()
 
         if pd.api.types.is_numeric_dtype(result_df[col]):
+            # Generalizar directamente a intervalos numéricos
             result_df[col] = generalize_numeric(result_df[col], bins=max(2, k))
-            changes.append(f"Se generalizó la columna numérica '{col}' en rangos")
+            changes.append(f"Se generalizó la columna numérica '{col}' en intervalos (ej: {result_df[col].iloc[0]})")
         else:
             result_df[col] = generalize_categorical(result_df[col], levels=2)
             changes.append(f"Se generalizó la columna categórica '{col}'")
@@ -883,6 +1032,8 @@ def apply_k_anonymity_algorithm(df, quasi_identifiers, k, technique_details):
             f"K objetivo: {k}. K logrado: {achieved_k}."
         )
     }
+
+
     return result_df
 
 
@@ -930,21 +1081,16 @@ def apply_techniques(df, config, technique_details):
     # global_params = json.loads(config["global_params"])
 
     column_mappings = (
-        json.loads(config["column_mappings"])
-        if isinstance(config.get("column_mappings"), str)
-        else config.get("column_mappings", [])
+        json.loads(config["column_mappings"]) if isinstance(config.get("column_mappings"), str) else config.get(
+            "column_mappings", [])
     )
 
     techniques = (
-        json.loads(config["techniques"])
-        if isinstance(config.get("techniques"), str)
-        else config.get("techniques", [])
+        json.loads(config["techniques"]) if isinstance(config.get("techniques"), str) else config.get("techniques", [])
     )
 
     global_params = (
-        json.loads(config["global_params"])
-        if isinstance(config.get("global_params"), str)
-        else config.get("global_params", {})
+        json.loads(config["global_params"]) if isinstance(config.get("global_params"), str) else config.get("global_params", {})
     )
 
     quasi_identifiers = [m["column"] for m in column_mappings if m["type"] == "quasi-identifier"]
@@ -975,10 +1121,11 @@ def apply_techniques(df, config, technique_details):
         if tech["technique"] == "generalization":
             if pd.api.types.is_numeric_dtype(result_df[col]):
                 bins = params.get("bins", 5)
+                # Generalizar directamente a intervalos numéricos
                 result_df[col] = generalize_numeric(result_df[col], bins)
                 explanation = (
-                    "Los valores numéricos exactos fueron reemplazados por rangos "
-                    "para disminuir el nivel de detalle del dato."
+                    "Los valores numéricos exactos fueron reemplazados por intervalos "
+                    "para disminuir el nivel de detalle del dato (ej: 28 → 28-35)."
                 )
             else:
                 levels = params.get("levels", 1)
@@ -988,13 +1135,15 @@ def apply_techniques(df, config, technique_details):
                     "más generales para evitar valores únicos."
                 )
 
-            technique_details[f"generalization_{col}"] = {
+            detail_key = f"generalization_{col}"
+            technique_details[detail_key] = {
                 "technique": "Generalización",
                 "column": col,
                 "params": params,
                 "changes": [f"Ejemplo: {sample_before} → {result_df[col].iloc[0]}"],
                 "explanation": explanation
             }
+
 
         elif tech["technique"] == "suppression":
             threshold = params.get("threshold", 0.1)
@@ -1024,6 +1173,33 @@ def apply_techniques(df, config, technique_details):
                 "explanation": (
                     f"Se añadió ruido aleatorio controlado (epsilon={epsilon}) "
                     "para proteger la información individual."
+                )
+            }
+
+        elif tech["technique"] == "pseudonymization":
+            result_df[col] = apply_pseudonymization(result_df[col])
+            technique_details[f"pseudonymization_{col}"] = {
+                "technique": "Pseudonimización",
+                "column": col,
+                "changes": [f"Ejemplo: {sample_before} → {result_df[col].iloc[0]}"],
+                "explanation": (
+                    "Los datos fueron reemplazados por pseudónimos únicos y consistentes, "
+                    "manteniendo la relación entre registros."
+                )
+            }
+
+        elif tech["technique"] == "masking":
+            mask_type = params.get("mask_type", "partial")
+            mask_char = params.get("mask_char", "*")
+            result_df[col] = apply_masking(result_df[col], mask_type, mask_char)
+            technique_details[f"masking_{col}"] = {
+                "technique": "Enmascaramiento",
+                "column": col,
+                "params": params,
+                "changes": [f"Ejemplo: {sample_before} → {result_df[col].iloc[0]}"],
+                "explanation": (
+                    "Los datos sensibles fueron enmascarados parcialmente, "
+                    "manteniendo el formato general pero ocultando detalles."
                 )
             }
 
@@ -1232,3 +1408,5 @@ if __name__ == "__main__":
         host=backend_config.get('host', '0.0.0.0'),
         port=backend_config.get('port', 8000)
     )
+
+

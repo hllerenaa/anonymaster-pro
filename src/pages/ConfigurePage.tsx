@@ -273,7 +273,9 @@ export const ConfigurePage: React.FC<ConfigurePageProps> = ({ selectedDatasetId,
   const availableTechniques = [
     { value: 'none', label: 'Ninguna', description: 'Mantener valores originales' },
     { value: 'generalization', label: 'Generalización', description: 'Reemplazar valores específicos con categorías más amplias' },
-    { value: 'suppression', label: 'Supresión', description: 'Ocultar o enmascarar valores' },
+    { value: 'suppression', label: 'Supresión', description: 'Ocultar valores con asteriscos' },
+    { value: 'pseudonymization', label: 'Pseudonimización', description: 'Reemplazar con pseudónimos consistentes' },
+    { value: 'masking', label: 'Enmascaramiento', description: 'Enmascarar parcialmente los datos' },
     { value: 'differential_privacy', label: 'Privacidad Diferencial', description: 'Agregar ruido aleatorio a los valores' },
   ];
 
@@ -459,6 +461,74 @@ export const ConfigurePage: React.FC<ConfigurePageProps> = ({ selectedDatasetId,
                             }
                             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                           />
+                        </div>
+                      )}
+
+                      {currentTechnique && currentTechnique.technique === 'pseudonymization' && (
+                        <div className="mt-3 pt-3 border-t border-slate-200">
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Prefijo del pseudónimo
+                          </label>
+                          <input
+                            type="text"
+                            value={currentTechnique.params.prefix || 'USER'}
+                            onChange={(e) =>
+                              updateTechnique(mapping.column, 'pseudonymization', {
+                                prefix: e.target.value,
+                              })
+                            }
+                            placeholder="USER"
+                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          />
+                          <p className="mt-1 text-xs text-slate-500">
+                            Ejemplo: USER → USER_a3b2c1, PATIENT → PATIENT_x7y8z9
+                          </p>
+                        </div>
+                      )}
+
+                      {currentTechnique && currentTechnique.technique === 'masking' && (
+                        <div className="mt-3 pt-3 border-t border-slate-200 space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Tipo de enmascaramiento
+                            </label>
+                            <select
+                              value={currentTechnique.params.mask_type || 'partial'}
+                              onChange={(e) =>
+                                updateTechnique(mapping.column, 'masking', {
+                                  ...currentTechnique.params,
+                                  mask_type: e.target.value,
+                                })
+                              }
+                              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                              <option value="partial">Parcial (mantiene inicio)</option>
+                              <option value="email">Email (j***@email.com)</option>
+                              <option value="phone">Teléfono (612***678)</option>
+                              <option value="middle">Central (Ma**a)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Carácter de enmascaramiento
+                            </label>
+                            <input
+                              type="text"
+                              maxLength={1}
+                              value={currentTechnique.params.mask_char || '*'}
+                              onChange={(e) =>
+                                updateTechnique(mapping.column, 'masking', {
+                                  ...currentTechnique.params,
+                                  mask_char: e.target.value || '*',
+                                })
+                              }
+                              placeholder="*"
+                              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            />
+                            <p className="mt-1 text-xs text-slate-500">
+                              Carácter usado para ocultar datos (por defecto: *)
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>

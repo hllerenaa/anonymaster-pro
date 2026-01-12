@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Book, Shield, Eye, Grid, Zap, Lock, AlertCircle, HelpCircle, FileText, Sparkles, BookOpen } from 'lucide-react';
+import { Book, Shield, Eye, Grid, Zap, Lock, AlertCircle, HelpCircle, FileText, Sparkles, BookOpen, UserCog, EyeOff } from 'lucide-react';
 
 export const DocsPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState('overview');
@@ -15,6 +15,8 @@ export const DocsPage: React.FC = () => {
     { id: 'diff-privacy', label: 'Privacidad Diferencial', icon: Lock },
     { id: 'generalization', label: 'Generalización', icon: Eye },
     { id: 'suppression', label: 'Supresión', icon: AlertCircle },
+    { id: 'pseudonymization', label: 'Pseudonimización', icon: UserCog },
+    { id: 'masking', label: 'Enmascaramiento', icon: EyeOff },
     { id: 'guide', label: 'Guía Paso a Paso', icon: FileText },
     { id: 'faq', label: 'Preguntas Frecuentes', icon: HelpCircle },
   ];
@@ -314,6 +316,24 @@ export const DocsPage: React.FC = () => {
                     </div>
                   </div>
                   <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Pseudonimización</h3>
+                    <p className="text-slate-700 mb-2">
+                      Reemplazar datos identificables con pseudónimos únicos y consistentes.
+                    </p>
+                    <div className="bg-purple-50 rounded p-3 text-sm">
+                      <strong>Ejemplo:</strong> "Juan Pérez" → "USER_a3b2c1"
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Enmascaramiento (Masking)</h3>
+                    <p className="text-slate-700 mb-2">
+                      Ocultar parcialmente información sensible manteniendo el formato.
+                    </p>
+                    <div className="bg-pink-50 rounded p-3 text-sm">
+                      <strong>Ejemplo:</strong> "juan@email.com" → "j***@email.com"
+                    </div>
+                  </div>
+                  <div>
                     <h3 className="text-lg font-bold text-slate-900 mb-2">Supresión</h3>
                     <p className="text-slate-700 mb-2">
                       Reemplazar valores con un marcador (*, null).
@@ -457,7 +477,7 @@ export const DocsPage: React.FC = () => {
                 </div>
 
                 <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6">
-                  <h3 className="text-xl font-bold text-green-900 mb-3">L-Diversity: ¿Por qué l=2?</h3>
+                  <h3 className="text-xl font-bold text-green-900 mb-3">L-Diversity: ¿por qué l=2?</h3>
 
                   <div className="grid md:grid-cols-2 gap-4 text-sm">
                     <div className="bg-red-100 border border-red-300 rounded p-3">
@@ -878,6 +898,216 @@ export const DocsPage: React.FC = () => {
           </div>
         )}
 
+        {activeSection === 'pseudonymization' && (
+          <div className="bg-white rounded-xl p-8 shadow-md border border-slate-200">
+            <div className="space-y-6">
+              <h1 className="text-3xl font-bold text-slate-900">Pseudonimización</h1>
+              <p className="text-lg text-slate-700">
+                Técnica que reemplaza datos identificables con pseudónimos únicos y consistentes.
+              </p>
+
+              <h2 className="text-xl font-bold text-slate-900 mb-3">¿Qué es Pseudonimización?</h2>
+              <p className="text-slate-700 mb-4">
+                La pseudonimización reemplaza información identificable (como nombres, emails, IDs) con
+                pseudónimos generados de forma consistente. El mismo valor original siempre genera el
+                mismo pseudónimo, manteniendo la integridad relacional de los datos.
+              </p>
+
+              <div className="bg-slate-50 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Ejemplo Visual:</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded p-4 border-2 border-red-200">
+                    <h4 className="font-bold text-red-700 mb-2">❌ Datos Originales</h4>
+                    <div className="space-y-2 text-sm">
+                      <div>"Juan Pérez"</div>
+                      <div>"María García"</div>
+                      <div>"Juan Pérez"</div>
+                      <div>"Pedro López"</div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded p-4 border-2 border-green-200">
+                    <h4 className="font-bold text-green-700 mb-2">✅ Pseudonimizados</h4>
+                    <div className="space-y-2 text-sm">
+                      <div>"USER_a3b2c1"</div>
+                      <div>"USER_x7y8z9"</div>
+                      <div>"USER_a3b2c1" <span className="text-green-600 text-xs">← Mismo pseudónimo</span></div>
+                      <div>"USER_m4n5p6"</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Características Clave:</h3>
+              <ul className="list-disc list-inside space-y-2 text-slate-700 mb-6">
+                <li><strong>Consistencia:</strong> El mismo valor siempre genera el mismo pseudónimo</li>
+                <li><strong>Unicidad:</strong> Valores diferentes generan pseudónimos diferentes</li>
+                <li><strong>Irreversibilidad:</strong> No se puede recuperar el valor original sin una tabla de mapeo</li>
+                <li><strong>Mantiene relaciones:</strong> Preserva las relaciones entre registros</li>
+              </ul>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Cuándo Usar Pseudonimización:</h3>
+              <ul className="list-disc list-inside space-y-2 text-slate-700 mb-6">
+                <li>Cuando necesitas mantener la capacidad de unir datos (joins)</li>
+                <li>Para proteger nombres, emails, o IDs de usuario</li>
+                <li>Cuando el análisis requiere seguir a los mismos individuos a lo largo del tiempo</li>
+                <li>Para cumplir con regulaciones como GDPR (considerado protección adicional)</li>
+              </ul>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Configuración:</h3>
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <p className="text-slate-700 mb-3"><strong>Prefijo:</strong> Personaliza el prefijo de los pseudónimos</p>
+                <div className="bg-white rounded p-3 text-sm font-mono">
+                  <div>prefix: "USER" → USER_a3b2c1</div>
+                  <div>prefix: "PATIENT" → PATIENT_x7y8z9</div>
+                  <div>prefix: "ID" → ID_m4n5p6</div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <h3 className="font-bold text-slate-900 mb-2">⚠️ Consideraciones:</h3>
+                <ul className="list-disc list-inside space-y-2 text-slate-700">
+                  <li>Los pseudónimos son consistentes pero no reversibles sin una tabla de mapeo</li>
+                  <li>Si necesitas "des-pseudonimizar" más tarde, guarda la tabla de mapeo de forma segura</li>
+                  <li>La pseudonimización NO es anonimización completa - sigue siendo datos personales bajo GDPR</li>
+                </ul>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-bold text-slate-900 mb-2">Analogía del Mundo Real:</h3>
+                <p className="text-slate-700">
+                  ¡Como nombres de usuario en un foro! Cada persona tiene un nombre de usuario único (pseudónimo)
+                  que usa consistentemente, pero no revela su nombre real. Puedes seguir sus publicaciones, pero
+                  no sabes quiénes son realmente.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeSection === 'masking' && (
+          <div className="bg-white rounded-xl p-8 shadow-md border border-slate-200">
+            <div className="space-y-6">
+              <h1 className="text-3xl font-bold text-slate-900">Enmascaramiento (Masking)</h1>
+              <p className="text-lg text-slate-700">
+                Técnica que oculta parcialmente información sensible manteniendo el formato general de los datos.
+              </p>
+
+              <h2 className="text-xl font-bold text-slate-900 mb-3">¿Qué es Enmascaramiento?</h2>
+              <p className="text-slate-700 mb-4">
+                El enmascaramiento reemplaza caracteres específicos de un valor con un carácter de enmascaramiento
+                (generalmente *), manteniendo visible parte del dato original. Esto permite preservar el formato
+                mientras oculta información sensible.
+              </p>
+
+              <div className="bg-slate-50 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Ejemplos por Tipo:</h3>
+                <div className="space-y-4">
+                  <div className="bg-white rounded p-4 border-l-4 border-purple-500">
+                    <h4 className="font-bold text-slate-900 mb-2">📧 Tipo: Email</h4>
+                    <div className="text-sm space-y-1">
+                      <div className="text-slate-600">Original: <span className="font-mono">juan.perez@email.com</span></div>
+                      <div className="text-green-600">Enmascarado: <span className="font-mono">j***@email.com</span></div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded p-4 border-l-4 border-blue-500">
+                    <h4 className="font-bold text-slate-900 mb-2">📱 Tipo: Teléfono</h4>
+                    <div className="text-sm space-y-1">
+                      <div className="text-slate-600">Original: <span className="font-mono">612345678</span></div>
+                      <div className="text-green-600">Enmascarado: <span className="font-mono">612***678</span></div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded p-4 border-l-4 border-pink-500">
+                    <h4 className="font-bold text-slate-900 mb-2">👤 Tipo: Parcial</h4>
+                    <div className="text-sm space-y-1">
+                      <div className="text-slate-600">Original: <span className="font-mono">Juan Pérez</span></div>
+                      <div className="text-green-600">Enmascarado: <span className="font-mono">J*** P***</span></div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded p-4 border-l-4 border-orange-500">
+                    <h4 className="font-bold text-slate-900 mb-2">🎯 Tipo: Central</h4>
+                    <div className="text-sm space-y-1">
+                      <div className="text-slate-600">Original: <span className="font-mono">María</span></div>
+                      <div className="text-green-600">Enmascarado: <span className="font-mono">Ma**a</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Tipos de Enmascaramiento:</h3>
+              <div className="space-y-3 mb-6">
+                <div className="bg-slate-50 rounded p-4">
+                  <h4 className="font-bold text-slate-900 mb-2">Parcial</h4>
+                  <p className="text-slate-700">Mantiene los primeros caracteres visibles, enmascara el resto</p>
+                </div>
+                <div className="bg-slate-50 rounded p-4">
+                  <h4 className="font-bold text-slate-900 mb-2">Email</h4>
+                  <p className="text-slate-700">Mantiene primera letra del usuario y el dominio completo</p>
+                </div>
+                <div className="bg-slate-50 rounded p-4">
+                  <h4 className="font-bold text-slate-900 mb-2">Teléfono</h4>
+                  <p className="text-slate-700">Mantiene inicio y fin, enmascara la parte central</p>
+                </div>
+                <div className="bg-slate-50 rounded p-4">
+                  <h4 className="font-bold text-slate-900 mb-2">Central</h4>
+                  <p className="text-slate-700">Mantiene inicio y fin, enmascara solo el medio</p>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Cuándo Usar Enmascaramiento:</h3>
+              <ul className="list-disc list-inside space-y-2 text-slate-700 mb-6">
+                <li>Para emails en formularios de contacto o newsletters</li>
+                <li>Para números de teléfono en registros de llamadas</li>
+                <li>Para nombres en listas públicas</li>
+                <li>Cuando necesitas mostrar que un dato existe sin revelar todo su contenido</li>
+                <li>Para validación de formato sin exponer datos sensibles</li>
+              </ul>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Configuración:</h3>
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-slate-700 mb-2"><strong>Tipo de enmascaramiento:</strong></p>
+                    <div className="bg-white rounded p-3 text-sm">
+                      <div>• partial - Mantiene inicio</div>
+                      <div>• email - Específico para emails</div>
+                      <div>• phone - Específico para teléfonos</div>
+                      <div>• middle - Enmascara solo el centro</div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-slate-700 mb-2"><strong>Carácter de enmascaramiento:</strong></p>
+                    <div className="bg-white rounded p-3 text-sm font-mono">
+                      Elige: * (predeterminado), #, X, o cualquier otro carácter
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <h3 className="font-bold text-slate-900 mb-2">⚠️ Consideraciones:</h3>
+                <ul className="list-disc list-inside space-y-2 text-slate-700">
+                  <li>El enmascaramiento puede ser reversible si el atacante conoce el patrón</li>
+                  <li>No usar para datos muy sensibles donde se requiere anonimización completa</li>
+                  <li>Combinar con otras técnicas para mayor protección</li>
+                  <li>Longitud visible puede revelar información (ej: nombre muy corto o muy largo)</li>
+                </ul>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-bold text-slate-900 mb-2">Analogía del Mundo Real:</h3>
+                <p className="text-slate-700">
+                  ¡Como la censura en documentos clasificados! Cuando el gobierno publica documentos desclasificados,
+                  a menudo verás texto con líneas negras ocultando información sensible - puedes ver que hay información
+                  ahí y el contexto general, pero no puedes leer los detalles específicos.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSection === 'guide' && (
           <div className="bg-white rounded-xl p-8 shadow-md border border-slate-200">
             <h1 className="text-3xl font-bold text-slate-900 mb-6">Guía Paso a Paso</h1>
@@ -1037,3 +1267,4 @@ export const DocsPage: React.FC = () => {
     </div>
   );
 };
+
