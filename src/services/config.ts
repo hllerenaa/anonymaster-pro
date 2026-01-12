@@ -59,3 +59,7 @@ export function getConfig(): AppConfig {
 export function getApiUrl(): string {
   return getConfig().api.baseUrl;
 }
+
+export function getApiBaseUrl(): string {
+  return config?.api?.baseUrl || '';
+}
