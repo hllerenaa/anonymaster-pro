@@ -785,111 +785,20 @@ def calculate_information_loss(original_df: pd.DataFrame, anonymized_df: pd.Data
 # --------------------------------------------------
 # FUNCIONES DE APOYO
 # --------------------------------------------------
-def generalize_numeric(series: pd.Series, bins: int = 5):
-    """
-    Generaliza valores numéricos en rangos y retorna tanto la serie generalizada
-    como los detalles de los rangos creados.
-    """
+def generalize_numeric(series: pd.Series, bins: int = 5) -> pd.Series:
     try:
-        # Crear los rangos
-        result, bin_edges = pd.cut(series, bins=bins, retbins=True, duplicates='drop')
-
-        # Crear detalles de los rangos
-        range_details = {}
-        actual_bins = len(bin_edges) - 1
-
-        for i in range(actual_bins):
-            label = f"Rango {i + 1}"
-            min_val = bin_edges[i]
-            max_val = bin_edges[i + 1]
-
-            # Contar valores en este rango
-            mask = (series > min_val) & (series <= max_val) if i > 0 else (series >= min_val) & (series <= max_val)
-            count = mask.sum()
-
-            range_details[label] = {
-                "range": f"{round(float(min_val), 2)} - {round(float(max_val), 2)}",
-                "min": round(float(min_val), 2),
-                "max": round(float(max_val), 2),
-                "count": int(count),
-                "percentage": round((count / len(series)) * 100, 1)
-            }
-
-        # Aplicar las etiquetas
-        labels = [f"Rango {i + 1}" for i in range(actual_bins)]
-        result_series = pd.cut(series, bins=bins, labels=labels, duplicates='drop')
-
-        return result_series, range_details
-
-    except Exception as e:
-        return series.astype(str), {"error": str(e)}
+        labels = [f"Rango {i + 1}" for i in range(bins)]
+        return pd.cut(series, bins=bins, labels=labels, duplicates='drop')
+    except Exception:
+        return series.astype(str)
 
 
-def generalize_categorical(series: pd.Series, levels: int = 1):
-    """
-    Generaliza valores categóricos manteniendo los top N y agrupando el resto.
-    Retorna tanto la serie generalizada como los detalles de la agrupación.
-    """
-    details = {
-        "kept_categories": [],
-        "grouped_categories": [],
-        "distribution": {}
-    }
-
-    if levels == 0 or levels == 1:
-        # Agrupar todo
-        result_series = pd.Series(['Generalizado'] * len(series), index=series.index)
-
-        # Contar valores originales
-        value_counts = series.value_counts()
-        details["grouped_categories"] = [
-            {
-                "value": str(val),
-                "count": int(count),
-                "percentage": round((count / len(series)) * 100, 1)
-            }
-            for val, count in value_counts.items()
-        ]
-        details["total_grouped"] = len(series)
-
-    else:
-        # Mantener top N categorías
-        counts = series.value_counts()
-        top_values = counts.head(levels).index.tolist()
-
-        # Crear serie generalizada
-        result_series = series.apply(lambda x: x if x in top_values else 'Otros')
-
-        # Detalles de categorías mantenidas
-        for val in top_values:
-            count = counts[val]
-            details["kept_categories"].append({
-                "value": str(val),
-                "count": int(count),
-                "percentage": round((count / len(series)) * 100, 1)
-            })
-
-        # Detalles de categorías agrupadas en "Otros"
-        grouped_values = counts[~counts.index.isin(top_values)]
-        for val, count in grouped_values.items():
-            details["grouped_categories"].append({
-                "value": str(val),
-                "count": int(count),
-                "percentage": round((count / len(series)) * 100, 1)
-            })
-
-        details["total_kept"] = int(sum(counts[val] for val in top_values))
-        details["total_grouped"] = int(sum(counts[val] for val in grouped_values.index))
-
-        # Distribución final
-        final_counts = result_series.value_counts()
-        for val, count in final_counts.items():
-            details["distribution"][str(val)] = {
-                "count": int(count),
-                "percentage": round((count / len(series)) * 100, 1)
-            }
-
-    return result_series, details
+def generalize_categorical(series: pd.Series, levels: int = 1) -> pd.Series:
+    if levels == 1:
+        return pd.Series(['Generalizado'] * len(series), index=series.index)
+    counts = series.value_counts()
+    top = counts.head(levels).index.tolist()
+    return series.apply(lambda x: x if x in top else 'Otros')
 
 
 def suppress_data(series: pd.Series, threshold: float = 0.1) -> pd.Series:
@@ -1066,20 +975,18 @@ def apply_techniques(df, config, technique_details):
         if tech["technique"] == "generalization":
             if pd.api.types.is_numeric_dtype(result_df[col]):
                 bins = params.get("bins", 5)
-                result_df[col], range_details = generalize_numeric(result_df[col], bins)
+                result_df[col] = generalize_numeric(result_df[col], bins)
                 explanation = (
                     "Los valores numéricos exactos fueron reemplazados por rangos "
                     "para disminuir el nivel de detalle del dato."
                 )
-                params["ranges"] = range_details
             else:
                 levels = params.get("levels", 1)
-                result_df[col], category_details = generalize_categorical(result_df[col], levels)
+                result_df[col] = generalize_categorical(result_df[col], levels)
                 explanation = (
                     "Los valores específicos fueron agrupados en categorías "
                     "más generales para evitar valores únicos."
                 )
-                params["categorization"] = category_details
 
             technique_details[f"generalization_{col}"] = {
                 "technique": "Generalización",
