@@ -1,4 +1,6 @@
-interface AppConfig {
+// src/config.ts
+
+export interface AppConfig {
   api: {
     baseUrl: string;
     timeout: number;
@@ -15,9 +17,13 @@ interface AppConfig {
 
 let config: AppConfig | null = null;
 
-const defaultConfig: AppConfig = {
+/**
+ * Configuración de respaldo.
+ * ⚠️ NO define baseUrl para evitar URLs quemadas.
+ */
+const fallbackConfig: AppConfig = {
   api: {
-    baseUrl: 'http://localhost:8000',
+    baseUrl: '',
     timeout: 30000,
   },
   app: {
@@ -30,36 +36,60 @@ const defaultConfig: AppConfig = {
   },
 };
 
+/**
+ * Carga dinámica del archivo /config.json.
+ * Es la ÚNICA fuente de verdad para endpoints.
+ */
 export async function loadConfig(): Promise<AppConfig> {
-  if (config) {
-    return config;
-  }
+  if (config) return config;
 
   try {
-    const response = await fetch('/config.json');
-    if (response.ok) {
-      config = await response.json();
-      return config;
+    const response = await fetch('/config.json', { cache: 'no-store' });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
+
+    const loadedConfig: AppConfig = await response.json();
+
+    if (!loadedConfig?.api?.baseUrl) {
+      throw new Error('api.baseUrl missing in config.json');
+    }
+
+    config = loadedConfig;
+    return config;
+
   } catch (error) {
-    console.warn('Failed to load config.json, using default configuration:', error);
-  }
+    console.error(
+      '❌ Failed to load config.json. Backend URL is undefined.',
+      error
+    );
 
-  config = defaultConfig;
-  return config;
+    config = fallbackConfig;
+    return config;
+  }
 }
 
+/**
+ * Devuelve la configuración actual.
+ * Nunca inventa valores.
+ */
 export function getConfig(): AppConfig {
-  if (!config) {
-    return defaultConfig;
-  }
-  return config;
+  return config ?? fallbackConfig;
 }
 
+/**
+ * Alias histórico / compatibilidad.
+ * Devuelve la URL base del backend.
+ */
 export function getApiUrl(): string {
   return getConfig().api.baseUrl;
 }
 
+/**
+ * Alias explícito (más semántico).
+ * Recomendado para nuevos usos.
+ */
 export function getApiBaseUrl(): string {
-  return config?.api?.baseUrl || '';
+  return getConfig().api.baseUrl;
 }
